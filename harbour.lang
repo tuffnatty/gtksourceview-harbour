@@ -1,0 +1,2023 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+ A PCRE language definition for GtkSourceView
+
+ Author: Phil Krylov
+ Copyright (C) 2025 Phil Krylov <phil@krylov.eu>
+
+ This program is free software; you can redistribute it and/or
+ modify it under the terms of the GNU Lesser General Public
+ License as published by the Free Software Foundation; either
+ version 2.1 of the License, or (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ Lesser General Public License for more details.
+
+ You should have received a copy of the GNU Lesser General Public License
+ along with this library; if not, see <http://www.gnu.org/licenses/>.
+
+-->
+<language id="harbour" _name="Harbour" version="2.0" _section="Sources">
+  <metadata>
+    <property name="mimetypes">text/x-prg;application/x-prg</property>
+    <property name="globs">*.prg;*.ch</property>
+    <property name="line-comment-start">//</property>
+    <property name="block-comment-start">/*</property>
+    <property name="block-comment-end">*/</property>
+  </metadata>
+
+  <styles>
+    <style id="comment"           _name="Comment"               map-to="def:comment"/>
+    <style id="string"            _name="String"                map-to="def:string"/>
+    <style id="preprocessor"      _name="Preprocessor"          map-to="def:preprocessor"/>
+    <style id="included-file"     _name="Included File"         map-to="def:string"/>
+    <style id="keyword"           _name="Keyword"               map-to="def:keyword"/>
+    <style id="function-declaration" _name="Keyword"            map-to="def:keyword"/>
+    <style id="operator"          _name="Operator"              map-to="def:operator"/>
+    <style id="storage-class"     _name="Storage Class"         map-to="def:type"/>
+    <style id="printf"            _name="printf Conversion"     map-to="def:special-char"/>
+    <style id="escaped-character" _name="Escaped Character"     map-to="def:special-char"/>
+    <style id="floating-point"    _name="Floating point number" map-to="def:floating-point"/>
+    <style id="decimal"           _name="Decimal number"        map-to="def:decimal"/>
+    <style id="hexadecimal"       _name="Hexadecimal number"    map-to="def:base-n-integer"/>
+    <style id="boolean"           _name="Boolean value"         map-to="def:boolean"/>
+    <style id="datetime"          _name="Datetime value"        map-to="def:number"/>
+    <style id="builtin-class"     _name="Builtin Class"         map-to="def:builtin"/>
+    <style id="builtin-function"  _name="Builtin Function"      map-to="def:builtin"/>
+    <style id="builtin-preprocessor" _name="Builtin preprocessor command" map-to="def:special-constant"/>
+    <style id="line-continue"     _name="Line Continuation"     map-to="def:preprocessor"/>
+    <style id="macro-evaluation"  _name="Macro substitution"    map-to="def:special-char"/>
+    <style id="error"             _name="Error"                 map-to="def:error"/>
+  </styles>
+
+  <default-regex-options case-sensitive="false"/>
+
+  <definitions>
+
+    <define-regex id="preproc-start">^\s*#\s*</define-regex>
+    <define-regex id="escaped-character" extended="true">
+      \\(                   # leading backslash
+      [\\\"\'nrbtfav\?] |   # escaped character
+      [0-7]{1,3} |          # one, two, or three octal digits
+      x[0-9A-Fa-f]+         # 'x' followed by hex digits
+      )
+    </define-regex>
+
+    <define-regex id="statement-start">(?:^|(?&lt;=;))\s*</define-regex>
+
+    <context id="printf" style-ref="printf" extend-parent="false">
+      <match extended="true">
+        \%\%|\%
+        (?:[1-9][0-9]*\$)?      # argument
+        [#0\-\ \+\'I]*          # flags
+        (?:[1-9][0-9]*|\*)?     # width
+        (?:\.\-?(?:[0-9]+|\*))? # precision
+        (?:hh|ll|[hlLqjzt])?    # length modifier
+        [diouxXeEfFgGaAcsCSpnm] # conversion specifier
+      </match>
+    </context>
+
+    <context id="macro-evaluation" style-ref="macro-evaluation">
+      <match>&amp;([A-Za-z_][A-Za-z0-9_]*)\.?</match>
+    </context>
+
+    <context id="if0-comment" style-ref="comment">
+      <start>\%{preproc-start}if\b\s*0\b</start>
+      <end>\%{preproc-start}(endif|else|elif)\b</end>
+      <include>
+        <context id="if-in-if0">
+          <start>\%{preproc-start}if(n?def)?\b</start>
+          <end>\%{preproc-start}endif\b</end>
+          <include>
+            <context ref="if-in-if0"/>
+            <context ref="def:in-comment"/>
+          </include>
+        </context>
+        <context ref="def:in-comment"/>
+      </include>
+    </context>
+
+    <context id="include" style-ref="preprocessor">
+      <match extended="true">
+        \%{preproc-start}
+        (include|import)\s*
+        (".*?")
+      </match>
+      <include>
+        <context id="included-file" sub-pattern="2" style-ref="included-file" class="path"/>
+      </include>
+    </context>
+
+    <context id="preprocessor" style-ref="preprocessor" end-at-line-end="true">
+      <start extended="true">
+        \%{preproc-start}
+        (define|undef|error|pragma|ident|if(n?def)?|else|elif|endif|line|warning|require|stdout|[xy]?(un)?(command|translate))
+        \b
+      </start>
+      <include>
+        <context ref="def:line-continue" ignore-style="true"/>
+        <context ref="string" ignore-style="true"/>
+        <context ref="def:c-like-comment"/>
+        <context ref="def:c-like-comment-multiline"/>
+      </include>
+    </context>
+
+    <context id="xbase-line-comment" style-ref="comment" end-at-line-end="true" class="comment" class-disabled="no-spell-check">
+      <start>\&amp;\&amp;|^\s*\*</start>
+      <include>
+        <context ref="def:in-line-comment"/>
+      </include>
+    </context>
+
+    <context id="line-continue" style-ref="line-continue">
+      <start>;\s*$</start>
+      <end>^</end>
+    </context>
+
+    <context id="string" style-ref="string" end-at-line-end="true" class="string" class-disabled="no-spell-check">
+      <start>"</start>
+      <end>"</end>
+      <include>
+        <context ref="printf"/>
+        <context ref="macro-evaluation"/>
+       </include>
+    </context>
+    <context id="string2" style-ref="string" end-at-line-end="true" class="string" class-disabled="no-spell-check">
+      <start>'</start>
+      <end>'</end>
+      <include>
+        <context ref="printf"/>
+        <context ref="macro-evaluation"/>
+       </include>
+    </context>
+    <context id="string3" style-ref="string" end-at-line-end="true" class="string" class-disabled="no-spell-check">
+      <start>(?&lt;=[,(\[+\.\{&amp;&lt;&gt;=]!\w)\s*\[</start>
+      <end>\]</end>
+      <include>
+        <context ref="printf"/>
+        <context ref="macro-evaluation"/>
+       </include>
+    </context>
+
+    <context id="escaped-character" style-ref="escaped-character">
+      <match>\%{escaped-character}</match>
+    </context>
+
+    <context id="extstring" style-ref="string" end-at-line-end="true" class="string" class-disabled="no-spell-check">
+      <start>E"</start>
+      <end>"</end>
+      <include>
+        <context ref="printf"/>
+        <context ref="escaped-character"/>
+        <context ref="macro-evaluation"/>
+      </include>
+    </context>
+    <context id="extstring2" style-ref="string" end-at-line-end="true" class="string" class-disabled="no-spell-check">
+      <start>E'</start>
+      <end>'</end>
+      <include>
+        <context ref="printf"/>
+        <context ref="escaped-character"/>
+        <context ref="macro-evaluation"/>
+       </include>
+    </context>
+
+    <!-- http://www.lysator.liu.se/c/ANSI-C-grammar-l.html -->
+    <context id="float" style-ref="floating-point">
+      <match extended="true">
+        (?&lt;![\w\.])
+        ((\.[0-9]+ | [0-9]+\.[0-9]*) ([Ee][+-]?[0-9]*)? |
+         ([0-9]+[Ee][+-]?[0-9]*))
+        [fFlL]?
+        (?![\w\.])
+      </match>
+    </context>
+
+    <context id="hexadecimal" style-ref="hexadecimal">
+      <match extended="true">
+        (?&lt;![\w\.])
+        0[xX][a-fA-F0-9]+
+        (?![\w\.])
+      </match>
+    </context>
+
+    <context id="invalid-hexadecimal" style-ref="error">
+      <match extended="true">
+        (?&lt;![\w\.])
+        0[xX][a-fA-F0-9]*[g-zG-Z][a-zA-Z0-9]*
+        (?![\w\.])
+      </match>
+    </context>
+
+    <context id="decimal" style-ref="decimal">
+      <match extended="true">
+        (?&lt;![\w\.])
+        [0-9]+
+        (?![\w\.])
+      </match>
+    </context>
+
+    <context id="else" once-only="true">
+      <prefix>\%{statement-start}</prefix>
+      <keyword>ELSE</keyword>
+    </context>
+    <context id="if-only-keywords">
+      <prefix>\%{statement-start}</prefix>
+      <keyword>ELSE</keyword>
+      <keyword>ELSEIF</keyword>
+    </context>
+    <context id="otherwise">
+      <prefix>\%{statement-start}</prefix>
+      <keyword>OTHERWISE</keyword>
+    </context>
+    <context id="case-only-keywords">
+      <prefix>\%{statement-start}</prefix>
+      <keyword>CASE</keyword>
+    </context>
+    <context id="exit">
+      <prefix>\%{statement-start}</prefix>
+      <keyword>EXIT</keyword>
+    </context>
+    <context id="loop">
+      <prefix>\%{statement-start}</prefix>
+      <keyword>LOOP</keyword>
+    </context>
+    <context id="always" once-only="true">
+      <prefix>\%{statement-start}</prefix>
+      <keyword>ALWAYS</keyword>
+    </context>
+    <context id="recover" once-only="true">
+      <prefix>\%{statement-start}</prefix>
+      <keyword>RECOVER(?:\s+USING)?</keyword>
+    </context>
+
+    <context id="loop1">
+      <start>\%{statement-start}FOR(?:\s+EACH)?\b</start>
+      <end>\%{statement-start}(?:END(?:\s*FOR)?|NEXT)\b</end>
+      <include>
+        <context where="start" sub-pattern="0" style-ref="keyword"/>
+        <context where="end" sub-pattern="0" style-ref="keyword"/>
+        <context ref="nontoplevel"/>
+      </include>
+    </context>
+    <context id="loop2">
+      <start>\%{statement-start}(?:DO\s+)WHILE\b</start>
+      <end>\%{statement-start}END(?:\s*DO)?\b</end>
+      <include>
+        <context where="start" sub-pattern="0" style-ref="keyword"/>
+        <context where="end" sub-pattern="0" style-ref="keyword"/>
+        <context ref="nontoplevel"/>
+      </include>
+    </context>
+
+    <context id="sequence">
+      <start>\%{statement-start}BEGIN\s+SEQUENCE(?:\s+WITH)?\b</start>
+      <end>\%{statement-start}END(?:\s*SEQUENCE)?\b</end>
+      <include>
+        <context where="start" sub-pattern="0" style-ref="keyword"/>
+        <context where="end" sub-pattern="0" style-ref="keyword"/>
+        <context ref="recover" style-ref="keyword"/>
+        <context ref="always" style-ref="keyword"/>
+        <context ref="nontoplevel"/>
+      </include>
+    </context>
+
+    <context id="case">
+      <start>\%{statement-start}DO\s+CASE\b</start>
+      <end>\%{statement-start}END(?:\s*CASE)?\b</end>
+      <include>
+        <context where="start" sub-pattern="0" style-ref="keyword"/>
+        <context where="end" sub-pattern="0" style-ref="keyword"/>
+        <context ref="case-only-keywords" style-ref="keyword"/>
+        <context ref="otherwise" style-ref="keyword"/>
+        <context ref="nontoplevel"/>
+      </include>
+    </context>
+
+    <context id="switch">
+      <start>\%{statement-start}SWITCH\b</start>
+      <end>\%{statement-start}END(?:\s*SWITCH)?\b</end>
+      <include>
+        <context where="start" sub-pattern="0" style-ref="keyword"/>
+        <context where="end" sub-pattern="0" style-ref="keyword"/>
+        <context ref="case-only-keywords" style-ref="keyword"/>
+        <context ref="otherwise"/>
+        <context ref="nontoplevel"/>
+      </include>
+    </context>
+
+    <context id="if">
+      <start>\%{statement-start}IF\b(?!\()</start>
+      <end>\%{statement-start}END(?:\s*IF)?\b</end>
+      <include>
+        <context where="start" sub-pattern="0" style-ref="keyword"/>
+        <context where="end" sub-pattern="0" style-ref="keyword"/>
+        <context ref="if-only-keywords" style-ref="keyword"/>
+        <context ref="else"/>
+        <context ref="nontoplevel"/>
+      </include>
+    </context>
+
+    <context id="with">
+      <start>\%{statement-start}WITH(\s+OBJECT)?\b</start>
+      <end>\%{statement-start}END(?:\s*WITH)?\b</end>
+      <include>
+        <context where="start" sub-pattern="0" style-ref="keyword"/>
+        <context where="end" sub-pattern="0" style-ref="keyword"/>
+        <context ref="nontoplevel"/>
+      </include>
+    </context>
+
+    <context id="keywords" style-ref="keyword">
+      <prefix>\%{statement-start}</prefix>
+      <keyword>CALL</keyword>
+      <keyword>DO</keyword>
+      <keyword>RETURN</keyword>
+    </context>
+
+    <context id="operators" style-ref="operator">
+      <match>\.AND\.|\.NOT\.|\.OR\.|\$|[-:+*/^%=!&lt;&gt;]=|[-+*/^%&amp;]|&lt;&gt;|&lt;|&gt;</match>
+    </context>
+
+    <context id="function-declaration" style-ref="function-declaration">
+      <keyword>CRITICAL</keyword>
+      <keyword>FUNCTION</keyword>
+      <keyword>MESSAGE</keyword>
+      <keyword>(?:INIT\s+|EXIT\s+)PROCEDURE</keyword>
+    </context>
+
+    <context id="class-only-keywords" style-ref="keyword">
+      <prefix>\%{statement-start}</prefix>
+      <keyword>(?:SYNC\s+)?(?:CLASS\s*|DECLARED\s+)?METHOD\s+(?:FUNCTION|PROCEDURE)</keyword>
+      <keyword>ACCESS</keyword>
+      <keyword>ASSIGN</keyword>
+      <keyword>CONSTRUCTOR</keyword>
+      <keyword>DESTRUCTOR</keyword>
+      <keyword>ERROR\s+HANDLER</keyword>
+      <keyword>FRIEND\s+(?:CLASS|FUNCTION)</keyword>
+      <keyword>MESSAGE</keyword>
+      <keyword>ON\s+ERROR(\s+FUNCTION)?</keyword>
+      <keyword>OPERATOR</keyword>
+    </context>
+
+    <context id="class-only-storage-classes" style-ref="storage-class">
+      <prefix>\%{statement-start}</prefix>
+      <keyword>(?:CLASS\s*)?(?:DATA|VAR)</keyword>
+      <keyword>EXPORT(?:ED)?:</keyword>
+      <keyword>EXPORT</keyword>
+      <keyword>HIDDEN:</keyword>
+      <keyword>HIDDEN</keyword>
+      <keyword>PROTECTED:</keyword>
+      <keyword>PROTECT</keyword>
+      <keyword>VISIBLE:</keyword>
+      <keyword>ACCESS</keyword>
+      <keyword>ASSIGN</keyword>
+      <keyword>CONSTRUCTOR</keyword>
+      <keyword>DESTRUCTOR</keyword>
+      <keyword>ERROR\s+HANDLER</keyword>
+      <keyword>FRIEND\s+(?:CLASS|FUNCTION)</keyword>
+      <keyword>MESSAGE</keyword>
+      <keyword>ON\s+ERROR(\s+FUNCTION)?</keyword>
+      <keyword>OPERATOR</keyword>
+    </context>
+
+    <context id="class-declaration">
+      <start>\%{statement-start}(?:CREATE\s+)?CLASS\s+(?:[A-Za-z_])</start>
+      <end>\%{statement-start}END ?CLASS(?:\s+LOCK(?:ED)?)\b</end>
+      <include>
+        <context where="start" sub-pattern="0" style-ref="keyword"/>
+        <context where="end" sub-pattern="0" style-ref="keyword"/>
+        <context ref="class-only-keywords"/>
+        <context ref="class-only-storage-classes"/>
+        <context ref="nontoplevel"/>
+      </include>
+    </context>
+
+    <context id="storage-class" style-ref="storage-class">
+      <prefix>\%{statement-start}</prefix>
+      <keyword>PARAMETERS</keyword>
+      <keyword>LOCAL</keyword>
+      <keyword>STATIC</keyword>
+      <keyword>PRIVATE</keyword>
+      <keyword>PUBLIC</keyword>
+    </context>
+
+    <context id="boolean" style-ref="boolean">
+      <keyword>\.[TFYN]\.</keyword>
+    </context>
+
+    <context id="database-command" style-ref="builtin-preprocessor">
+      <prefix>\%{statement-start}</prefix>
+      <keyword>APPEND\s+(?:BLANK|FROM)</keyword>
+      <keyword>AVERAGE</keyword>
+      <keyword>CLOSE(?:\s+(DATABASES|FORMAT|INDEX|IDEXES))?</keyword>
+      <keyword>COMMIT|CONTINUE|DELETE(\s+TAG)?|LOCATE|PACK|RECALL|REPL(ACE)?|SEEK|SELE(CT)?|USE|ZAP|UNLOCK(?:\s+ALL)?</keyword>
+      <keyword>COPY(?:\s+(?:STRUCTURE|EXTENDED|TO))+</keyword>
+      <keyword>COUNT(?:\s+TO)?</keyword>
+      <keyword>CREATE(?!\s+CLASS\b)</keyword>
+      <keyword>DISPLAY</keyword>
+      <keyword>FIND</keyword>
+      <keyword>GO(?:TO)(?:\s+(?:TOP|BOTTOM))?</keyword>
+      <keyword>INDEX\s+ON</keyword>
+      <keyword>JOIN(?:\s+WITH)</keyword>
+      <keyword>LABEL\s+FORM</keyword>
+      <keyword>LIST</keyword>
+      <keyword>LOCATE</keyword>
+      <keyword>PACK</keyword>
+      <keyword>RECALL</keyword>
+      <keyword>REINDEX</keyword>
+      <keyword>REPORT FORM</keyword>
+      <keyword>SEEK</keyword>
+      <keyword>SET\s+(DELETED|EXCLUSIVE|SOFTSEEK|UNIQUE)(?:\s+(?:ON|OFF)?)</keyword>
+      <keyword>SET\s+(AUTORDER|AUTOSHARE|FILTER|INDEX|MBOCKSIZE|MEMOBLOCK|MFILEEXT|SCOPE(?:BOTTOM|TOP)?)\s+TO</keyword>
+      <keyword>SET\s+DESCENDING\s+(?:ON|OFF)</keyword>
+      <keyword>SET\s+(STRICTREAD|OPTIMIZE|AUTOPEN)(?:\s+(?:ON|OFF))?</keyword>
+      <keyword>SET\s+ORDER\s+TO(?:\s+TAG)?</keyword>
+      <keyword>SET DBFLOCKSCHEME</keyword>
+      <keyword>SET HARDCOMMIT</keyword>
+      <keyword>SET RELATION(?:\s+ADDITIVE)?\s+TO</keyword>
+      <keyword>SKIP(?:\s+ALIAS)</keyword>
+      <keyword>SORT</keyword>
+      <keyword>SUM</keyword>
+      <keyword>TOTAL</keyword>
+      <keyword>UPDATE(?:\s+FROM)</keyword>
+    </context>
+
+    <context id="builtin-class" style-ref="builtin-class">
+      <keyword>__HBARRAY</keyword>
+      <keyword>__HBBLOCK</keyword>
+      <keyword>__HBCHARACTER</keyword>
+      <keyword>__HBDATE</keyword>
+      <keyword>__HBHASH</keyword>
+      <keyword>__HBLOGICAL</keyword>
+      <keyword>__HBNIL</keyword>
+      <keyword>__HBNUMERIC</keyword>
+      <keyword>__HBPOINTER</keyword>
+      <keyword>__HBSYMBOL</keyword>
+      <keyword>__HBTIMESTAMP</keyword>
+      <keyword>GET</keyword>
+      <keyword>HB_GET</keyword>
+      <keyword>HB_POPUPMENU</keyword>
+      <keyword>HBARRAY</keyword>
+      <keyword>HBBLOCK</keyword>
+      <keyword>HBCHARACTER</keyword>
+      <keyword>HBBRWTEXT</keyword>
+      <keyword>HBCHECKBOX</keyword>
+      <keyword>HBCLASS</keyword>
+      <keyword>HBDATE</keyword>
+      <keyword>HBEDITOR</keyword>
+      <keyword>HBGETLIST</keyword>
+      <keyword>HBHASH</keyword>
+      <keyword>HBLABELFORM</keyword>
+      <keyword>HBLISTBOX</keyword>
+      <keyword>HBLOGICAL</keyword>
+      <keyword>HBMEMOEDITOR</keyword>
+      <keyword>HBMENUITEM</keyword>
+      <keyword>HBMENUSYS</keyword>
+      <keyword>HBNIL</keyword>
+      <keyword>HBNUMERIC</keyword>
+      <keyword>HBOBJECT</keyword>
+      <keyword>HBPERSISTENT</keyword>
+      <keyword>HBPOINTER</keyword>
+      <keyword>HBPOPUPMENU</keyword>
+      <keyword>HBPROFILE</keyword>
+      <keyword>HBPUSHBUTTON</keyword>
+      <keyword>HBRADIOBUTTON</keyword>
+      <keyword>HBRADIOGROUP</keyword>
+      <keyword>HBREPORTFORM</keyword>
+      <keyword>HBSCALAR</keyword>
+      <keyword>HBSCROLLBAR</keyword>
+      <keyword>HBSYMBOL</keyword>
+      <keyword>HBTEXTLINE</keyword>
+      <keyword>HBTIMESTAMP</keyword>
+      <keyword>HBTOPBARMENU</keyword>
+      <keyword>MENUITEM</keyword>
+      <keyword>POPUP</keyword>
+      <keyword>SYMBOL</keyword>
+      <keyword>TBCOLUMN</keyword>
+      <keyword>TBROWSE</keyword>
+      <keyword>TOPBAR</keyword>
+    </context>
+
+    <context id="builtin-function" style-ref="builtin-function">
+      <keyword>II?F</keyword>
+      <keyword>AADD</keyword>
+      <keyword>ABS</keyword>
+      <keyword>ACHOICE</keyword>
+      <keyword>ACLONE</keyword>
+      <keyword>ACOPY</keyword>
+      <keyword>ADEL</keyword>
+      <keyword>ADIR</keyword>
+      <keyword>AEVAL</keyword>
+      <keyword>AFIELDS</keyword>
+      <keyword>AFILL</keyword>
+      <keyword>AINS</keyword>
+      <keyword>ALERT</keyword>
+      <keyword>ALIAS</keyword>
+      <keyword>ALLTRIM</keyword>
+      <keyword>ALTD</keyword>
+      <keyword>AMPM</keyword>
+      <keyword>APPLYDEFAU</keyword>
+      <keyword>ARRAY</keyword>
+      <keyword>ASC</keyword>
+      <keyword>ASCAN</keyword>
+      <keyword>ASIZE</keyword>
+      <keyword>ASORT</keyword>
+      <keyword>AT</keyword>
+      <keyword>ATAIL</keyword>
+      <keyword>BIN2I</keyword>
+      <keyword>BIN2L</keyword>
+      <keyword>BIN2W</keyword>
+      <keyword>BOF</keyword>
+      <keyword>BREAK</keyword>
+      <keyword>BROWSE</keyword>
+      <keyword>CDOW</keyword>
+      <keyword>CHECKDEFCO</keyword>
+      <keyword>CHR</keyword>
+      <keyword>CMONTH</keyword>
+      <keyword>COL</keyword>
+      <keyword>COLORSELECT</keyword>
+      <keyword>COMBODEFCO</keyword>
+      <keyword>CTOD</keyword>
+      <keyword>CURDIR</keyword>
+      <keyword>DATE</keyword>
+      <keyword>DAY</keyword>
+      <keyword>DAYS</keyword>
+      <keyword>DBAPPEND</keyword>
+      <keyword>DBCLEARFILTER</keyword>
+      <keyword>DBCLEARINDEX</keyword>
+      <keyword>DBCLEARRELATION</keyword>
+      <keyword>DBCLOSEALL</keyword>
+      <keyword>DBCLOSEAREA</keyword>
+      <keyword>DBCOMMIT</keyword>
+      <keyword>DBCOMMITALL</keyword>
+      <keyword>DBCREATE</keyword>
+      <keyword>DBCREATEINDEX</keyword>
+      <keyword>DBDELETE</keyword>
+      <keyword>DBEDIT</keyword>
+      <keyword>DBEVAL</keyword>
+      <keyword>DBF</keyword>
+      <keyword>DBFBLOB</keyword>
+      <keyword>DBFDBT</keyword>
+      <keyword>DBFIELDINFO</keyword>
+      <keyword>DBFILEGET</keyword>
+      <keyword>DBFILEPUT</keyword>
+      <keyword>DBFILTER</keyword>
+      <keyword>DBFSMT</keyword>
+      <keyword>DBGOBOTTOM</keyword>
+      <keyword>DBGOTO</keyword>
+      <keyword>DBGOTOP</keyword>
+      <keyword>DBINFO</keyword>
+      <keyword>DBORDERINFO</keyword>
+      <keyword>DBRECALL</keyword>
+      <keyword>DBRECORDINFO</keyword>
+      <keyword>DBREINDEX</keyword>
+      <keyword>DBRELATION</keyword>
+      <keyword>DBRLOCK</keyword>
+      <keyword>DBRLOCKLIST</keyword>
+      <keyword>DBRSELECT</keyword>
+      <keyword>DBRUNLOCK</keyword>
+      <keyword>DBSEEK</keyword>
+      <keyword>DBSELECTAREA</keyword>
+      <keyword>DBSETDRIVER</keyword>
+      <keyword>DBSETFILTER</keyword>
+      <keyword>DBSETINDEX</keyword>
+      <keyword>DBSETORDER</keyword>
+      <keyword>DBSETRELATION</keyword>
+      <keyword>DBSKIP</keyword>
+      <keyword>DBSTRUCT</keyword>
+      <keyword>DBTABLEEXT</keyword>
+      <keyword>DBUNLOCK</keyword>
+      <keyword>DBUNLOCKALL</keyword>
+      <keyword>DBUSEAREA</keyword>
+      <keyword>DELETED</keyword>
+      <keyword>DELIM</keyword>
+      <keyword>DESCEND</keyword>
+      <keyword>DEVOUT</keyword>
+      <keyword>DEVOUTPICT</keyword>
+      <keyword>DEVPOS</keyword>
+      <keyword>DIRCHANGE</keyword>
+      <keyword>DIRECTORY</keyword>
+      <keyword>DISKCHANGE</keyword>
+      <keyword>DISKNAME</keyword>
+      <keyword>DISKSPACE</keyword>
+      <keyword>DISPBEGIN</keyword>
+      <keyword>DISPBOX</keyword>
+      <keyword>DISPCOUNT</keyword>
+      <keyword>DISPEND</keyword>
+      <keyword>DISPOUT</keyword>
+      <keyword>DISPOUTAT</keyword>
+      <keyword>DO</keyword>
+      <keyword>DOSERROR</keyword>
+      <keyword>DOW</keyword>
+      <keyword>DTOC</keyword>
+      <keyword>DTOS</keyword>
+      <keyword>ELAPTIME</keyword>
+      <keyword>EMPTY</keyword>
+      <keyword>EOF</keyword>
+      <keyword>ERASEGETMSG</keyword>
+      <keyword>ERRORBLOCK</keyword>
+      <keyword>ERRORLEVEL</keyword>
+      <keyword>ERRORNEW</keyword>
+      <keyword>ERRORSYS</keyword>
+      <keyword>EVAL</keyword>
+      <keyword>EXP</keyword>
+      <keyword>FCLOSE</keyword>
+      <keyword>FCOUNT</keyword>
+      <keyword>FCREATE</keyword>
+      <keyword>FERASE</keyword>
+      <keyword>FERROR</keyword>
+      <keyword>FIELDBLOCK</keyword>
+      <keyword>FIELDGET</keyword>
+      <keyword>FIELDNAME</keyword>
+      <keyword>FIELDPOS</keyword>
+      <keyword>FIELDPUT</keyword>
+      <keyword>FIELDWBLOCK</keyword>
+      <keyword>FILE</keyword>
+      <keyword>FKLABEL</keyword>
+      <keyword>FKMAX</keyword>
+      <keyword>FLOCK</keyword>
+      <keyword>FOPEN</keyword>
+      <keyword>FOUND</keyword>
+      <keyword>FREAD</keyword>
+      <keyword>FREADSTR</keyword>
+      <keyword>FRENAME</keyword>
+      <keyword>FSEEK</keyword>
+      <keyword>FSETDEVMOD</keyword>
+      <keyword>FWRITE</keyword>
+      <keyword>GETACTIVE</keyword>
+      <keyword>GETAPPLYKEY</keyword>
+      <keyword>GETCLRBACK</keyword>
+      <keyword>GETCLRFORE</keyword>
+      <keyword>GETCLRPAIR</keyword>
+      <keyword>GETDOSETKEY</keyword>
+      <keyword>GETENV</keyword>
+      <keyword>GETNEW</keyword>
+      <keyword>GETPAIRLEN</keyword>
+      <keyword>GETPAIRPOS</keyword>
+      <keyword>GETPOSTVALIDATE</keyword>
+      <keyword>GETPREVALIDATE</keyword>
+      <keyword>GETREADER</keyword>
+      <keyword>GUIAPPLYKEY</keyword>
+      <keyword>GUIPOSTVALIDATE</keyword>
+      <keyword>GUIPREVALIDATE</keyword>
+      <keyword>GUIREADER</keyword>
+      <keyword>HARDCR</keyword>
+      <keyword>HB_ACMDLINE</keyword>
+      <keyword>HB_ADEL</keyword>
+      <keyword>HB_ADLER32</keyword>
+      <keyword>HB_AINS</keyword>
+      <keyword>HB_ALERT</keyword>
+      <keyword>HB_ANSITOOEM</keyword>
+      <keyword>HB_APARAMS</keyword>
+      <keyword>HB_ARGC</keyword>
+      <keyword>HB_ARGCHECK</keyword>
+      <keyword>HB_ARGSHIFT</keyword>
+      <keyword>HB_ARGSTRING</keyword>
+      <keyword>HB_ARGV</keyword>
+      <keyword>HB_ARRAYTOPARAMS</keyword>
+      <keyword>HB_ASCAN</keyword>
+      <keyword>HB_ASCIIISALPHA</keyword>
+      <keyword>HB_ASCIIISDIGIT</keyword>
+      <keyword>HB_ASCIIISLOWER</keyword>
+      <keyword>HB_ASCIIISUPPER</keyword>
+      <keyword>HB_ASCIILOWER</keyword>
+      <keyword>HB_ASCIIUPPER</keyword>
+      <keyword>HB_AT</keyword>
+      <keyword>HB_ATI</keyword>
+      <keyword>HB_ATOKENS</keyword>
+      <keyword>HB_ATX</keyword>
+      <keyword>HB_BASE64DECODE</keyword>
+      <keyword>HB_BASE64ENCODE</keyword>
+      <keyword>HB_BAT</keyword>
+      <keyword>HB_BCHAR</keyword>
+      <keyword>HB_BCODE</keyword>
+      <keyword>HB_BITAND</keyword>
+      <keyword>HB_BITNOT</keyword>
+      <keyword>HB_BITOR</keyword>
+      <keyword>HB_BITRESET</keyword>
+      <keyword>HB_BITSET</keyword>
+      <keyword>HB_BITSHIFT</keyword>
+      <keyword>HB_BITTEST</keyword>
+      <keyword>HB_BITXOR</keyword>
+      <keyword>HB_BLEFT</keyword>
+      <keyword>HB_BLEN</keyword>
+      <keyword>HB_BLOWFISHDECRYPT</keyword>
+      <keyword>HB_BLOWFISHDECRYPT_CFB</keyword>
+      <keyword>HB_BLOWFISHENCRYPT</keyword>
+      <keyword>HB_BLOWFISHENCRYPT_CFB</keyword>
+      <keyword>HB_BLOWFISHKEY</keyword>
+      <keyword>HB_BPADC</keyword>
+      <keyword>HB_BPADL</keyword>
+      <keyword>HB_BPADR</keyword>
+      <keyword>HB_BPEEK</keyword>
+      <keyword>HB_BPOKE</keyword>
+      <keyword>HB_BRAT</keyword>
+      <keyword>HB_BRIGHT</keyword>
+      <keyword>HB_BSTUFF</keyword>
+      <keyword>HB_BSUBSTR</keyword>
+      <keyword>HB_BUILDDATE</keyword>
+      <keyword>HB_BYTESWAPI</keyword>
+      <keyword>HB_BYTESWAPL</keyword>
+      <keyword>HB_BYTESWAPLL</keyword>
+      <keyword>HB_BYTESWAPU</keyword>
+      <keyword>HB_BYTESWAPW</keyword>
+      <keyword>HB_CDAY</keyword>
+      <keyword>HB_CDPCHARMAX</keyword>
+      <keyword>HB_CDPEXISTS</keyword>
+      <keyword>HB_CDPINFO</keyword>
+      <keyword>HB_CDPISCHARIDX</keyword>
+      <keyword>HB_CDPISUTF8</keyword>
+      <keyword>HB_CDPLIST</keyword>
+      <keyword>HB_CDPOS</keyword>
+      <keyword>HB_CDPSELECT</keyword>
+      <keyword>HB_CDPTERM</keyword>
+      <keyword>HB_CDPUNIID</keyword>
+      <keyword>HB_CLOCKS2SECS</keyword>
+      <keyword>HB_CLRAREA</keyword>
+      <keyword>HB_CMDLINE</keyword>
+      <keyword>HB_COLORINDEX</keyword>
+      <keyword>HB_COLORTON</keyword>
+      <keyword>HB_COMCLOSE</keyword>
+      <keyword>HB_COMDISCARDCHAR</keyword>
+      <keyword>HB_COMERRORCHAR</keyword>
+      <keyword>HB_COMFINDPORT</keyword>
+      <keyword>HB_COMFLOWCHARS</keyword>
+      <keyword>HB_COMFLOWCONTROL</keyword>
+      <keyword>HB_COMFLOWSET</keyword>
+      <keyword>HB_COMFLUSH</keyword>
+      <keyword>HB_COMGETDEVICE</keyword>
+      <keyword>HB_COMGETDEVICEHANDLE</keyword>
+      <keyword>HB_COMGETERROR</keyword>
+      <keyword>HB_COMGETOSERROR</keyword>
+      <keyword>HB_COMINIT</keyword>
+      <keyword>HB_COMINPUTCOUNT</keyword>
+      <keyword>HB_COMINPUTSTATE</keyword>
+      <keyword>HB_COMLASTNUM</keyword>
+      <keyword>HB_COMLSR</keyword>
+      <keyword>HB_COMMCR</keyword>
+      <keyword>HB_COMMSR</keyword>
+      <keyword>HB_COMOPEN</keyword>
+      <keyword>HB_COMOUTPUTCOUNT</keyword>
+      <keyword>HB_COMOUTPUTSTATE</keyword>
+      <keyword>HB_COMPILE</keyword>
+      <keyword>HB_COMPILEBUF</keyword>
+      <keyword>HB_COMPILEFROMBUF</keyword>
+      <keyword>HB_COMPILER</keyword>
+      <keyword>HB_COMRECV</keyword>
+      <keyword>HB_COMSEND</keyword>
+      <keyword>HB_COMSENDBREAK</keyword>
+      <keyword>HB_COMSETDEVICE</keyword>
+      <keyword>HB_COMSETERROR</keyword>
+      <keyword>HB_CRC16</keyword>
+      <keyword>HB_CRC32</keyword>
+      <keyword>HB_CRC</keyword>
+      <keyword>HB_CRCCT</keyword>
+      <keyword>HB_CSTR</keyword>
+      <keyword>HB_CTOD</keyword>
+      <keyword>HB_CTOT</keyword>
+      <keyword>HB_CURDRIVE</keyword>
+      <keyword>HB_CWD</keyword>
+      <keyword>HB_DATE</keyword>
+      <keyword>HB_DATETIME</keyword>
+      <keyword>HB_DBCREATETEMP</keyword>
+      <keyword>HB_DBDETACH</keyword>
+      <keyword>HB_DBDROP</keyword>
+      <keyword>HB_DBEXISTS</keyword>
+      <keyword>HB_DBGETFILTER</keyword>
+      <keyword>HB_DBRENAME</keyword>
+      <keyword>HB_DBREQUEST</keyword>
+      <keyword>HB_DEFAULT</keyword>
+      <keyword>HB_DEFAULTVALUE</keyword>
+      <keyword>HB_DESERIALIZE</keyword>
+      <keyword>HB_DIRBASE</keyword>
+      <keyword>HB_DIRBUILD</keyword>
+      <keyword>HB_DIRCREATE</keyword>
+      <keyword>HB_DIRDELETE</keyword>
+      <keyword>HB_DIRECTORY</keyword>
+      <keyword>HB_DIREXISTS</keyword>
+      <keyword>HB_DIRREMOVEALL</keyword>
+      <keyword>HB_DIRSCAN</keyword>
+      <keyword>HB_DIRSEPADD</keyword>
+      <keyword>HB_DIRSEPDEL</keyword>
+      <keyword>HB_DIRSEPTOOS</keyword>
+      <keyword>HB_DIRTEMP</keyword>
+      <keyword>HB_DIRUNBUILD</keyword>
+      <keyword>HB_DISABLEWAITLOCKS</keyword>
+      <keyword>HB_DISKSPACE</keyword>
+      <keyword>HB_DISPBOX</keyword>
+      <keyword>HB_DISPOUTAT</keyword>
+      <keyword>HB_DISPOUTATBOX</keyword>
+      <keyword>HB_DTOC</keyword>
+      <keyword>HB_DTOT</keyword>
+      <keyword>HB_DYNCALL</keyword>
+      <keyword>HB_ENDOBJECT</keyword>
+      <keyword>HB_EOL</keyword>
+      <keyword>HB_ERASEARRAYRDD</keyword>
+      <keyword>HB_EXECFROMARRAY</keyword>
+      <keyword>HB_EXECMSG</keyword>
+      <keyword>HB_FCOMMIT</keyword>
+      <keyword>HB_FCOPY</keyword>
+      <keyword>HB_FCREATE</keyword>
+      <keyword>HB_FEOF</keyword>
+      <keyword>HB_FGETATTR</keyword>
+      <keyword>HB_FGETDATETIME</keyword>
+      <keyword>HB_FIELDDEC</keyword>
+      <keyword>HB_FIELDGET</keyword>
+      <keyword>HB_FIELDLEN</keyword>
+      <keyword>HB_FIELDPUT</keyword>
+      <keyword>HB_FIELDTYPE</keyword>
+      <keyword>HB_FILEARRAYRDD</keyword>
+      <keyword>HB_FILEDELETE</keyword>
+      <keyword>HB_FILEEXISTS</keyword>
+      <keyword>HB_FILEMATCH</keyword>
+      <keyword>HB_FISDEVICE</keyword>
+      <keyword>HB_FLINK</keyword>
+      <keyword>HB_FLINKREAD</keyword>
+      <keyword>HB_FLINKSYM</keyword>
+      <keyword>HB_FLOCK</keyword>
+      <keyword>HB_FNAMEDIR</keyword>
+      <keyword>HB_FNAMEEXISTS</keyword>
+      <keyword>HB_FNAMEEXT</keyword>
+      <keyword>HB_FNAMEEXTSET</keyword>
+      <keyword>HB_FNAMEEXTSETDEF</keyword>
+      <keyword>HB_FNAMEMERGE</keyword>
+      <keyword>HB_FNAMENAME</keyword>
+      <keyword>HB_FNAMENAMEEXT</keyword>
+      <keyword>HB_FNAMESPLIT</keyword>
+      <keyword>HB_FORNEXT</keyword>
+      <keyword>HB_FREADLEN</keyword>
+      <keyword>HB_FSETATTR</keyword>
+      <keyword>HB_FSETDATETIME</keyword>
+      <keyword>HB_FSETDEVMODE</keyword>
+      <keyword>HB_FSIZE</keyword>
+      <keyword>HB_FTEMPCREATE</keyword>
+      <keyword>HB_FTEMPCREATEEX</keyword>
+      <keyword>HB_FUNLOCK</keyword>
+      <keyword>HB_GCALL</keyword>
+      <keyword>HB_GCSETAUTO</keyword>
+      <keyword>HB_GCSTEP</keyword>
+      <keyword>HB_GETENV</keyword>
+      <keyword>HB_GETREADVAR</keyword>
+      <keyword>HB_GETSTDERR</keyword>
+      <keyword>HB_GETSTDIN</keyword>
+      <keyword>HB_GETSTDOUT</keyword>
+      <keyword>HB_GFXPRIMITIVE</keyword>
+      <keyword>HB_GFXTEXT</keyword>
+      <keyword>HB_GTALERT</keyword>
+      <keyword>HB_GTCREATE</keyword>
+      <keyword>HB_GTEXISTS</keyword>
+      <keyword>HB_GTINFO</keyword>
+      <keyword>HB_GTLIST</keyword>
+      <keyword>HB_GTLOCK</keyword>
+      <keyword>HB_GTRELOAD</keyword>
+      <keyword>HB_GTSELECT</keyword>
+      <keyword>HB_GTSYS</keyword>
+      <keyword>HB_GTUNLOCK</keyword>
+      <keyword>HB_GTVERSION</keyword>
+      <keyword>HB_GZCLEARERR</keyword>
+      <keyword>HB_GZCLOSE</keyword>
+      <keyword>HB_GZCOMPRESS</keyword>
+      <keyword>HB_GZCOMPRESSBOUND</keyword>
+      <keyword>HB_GZDIRECT</keyword>
+      <keyword>HB_GZDOPEN</keyword>
+      <keyword>HB_GZEOF</keyword>
+      <keyword>HB_GZERROR</keyword>
+      <keyword>HB_GZFLUSH</keyword>
+      <keyword>HB_GZGETC</keyword>
+      <keyword>HB_GZGETS</keyword>
+      <keyword>HB_GZOPEN</keyword>
+      <keyword>HB_GZPUTC</keyword>
+      <keyword>HB_GZPUTS</keyword>
+      <keyword>HB_GZREAD</keyword>
+      <keyword>HB_GZREWIND</keyword>
+      <keyword>HB_GZSEEK</keyword>
+      <keyword>HB_GZSETPARAMS</keyword>
+      <keyword>HB_GZTELL</keyword>
+      <keyword>HB_GZUNGETC</keyword>
+      <keyword>HB_GZWRITE</keyword>
+      <keyword>HB_HALLOCATE</keyword>
+      <keyword>HB_HASH</keyword>
+      <keyword>HB_HAUTOADD</keyword>
+      <keyword>HB_HBINARY</keyword>
+      <keyword>HB_HCASEMATCH</keyword>
+      <keyword>HB_HCLEAR</keyword>
+      <keyword>HB_HCLONE</keyword>
+      <keyword>HB_HCOPY</keyword>
+      <keyword>HB_HDEFAULT</keyword>
+      <keyword>HB_HDEL</keyword>
+      <keyword>HB_HDELAT</keyword>
+      <keyword>HB_HEVAL</keyword>
+      <keyword>HB_HEXTONUM</keyword>
+      <keyword>HB_HEXTOSTR</keyword>
+      <keyword>HB_HFILL</keyword>
+      <keyword>HB_HGET</keyword>
+      <keyword>HB_HGETDEF</keyword>
+      <keyword>HB_HGETREF</keyword>
+      <keyword>HB_HHASKEY</keyword>
+      <keyword>HB_HKEEPORDER</keyword>
+      <keyword>HB_HKEYAT</keyword>
+      <keyword>HB_HKEYS</keyword>
+      <keyword>HB_HMAC_MD5</keyword>
+      <keyword>HB_HMAC_SHA1</keyword>
+      <keyword>HB_HMAC_SHA224</keyword>
+      <keyword>HB_HMAC_SHA256</keyword>
+      <keyword>HB_HMAC_SHA384</keyword>
+      <keyword>HB_HMAC_SHA512</keyword>
+      <keyword>HB_HMERGE</keyword>
+      <keyword>HB_HOUR</keyword>
+      <keyword>HB_HPAIRAT</keyword>
+      <keyword>HB_HPOS</keyword>
+      <keyword>HB_HRBDO</keyword>
+      <keyword>HB_HRBGETFUNLIST</keyword>
+      <keyword>HB_HRBGETFUNSYM</keyword>
+      <keyword>HB_HRBLOAD</keyword>
+      <keyword>HB_HRBRUN</keyword>
+      <keyword>HB_HRBSIGNATURE</keyword>
+      <keyword>HB_HRBUNLOAD</keyword>
+      <keyword>HB_HSCAN</keyword>
+      <keyword>HB_HSET</keyword>
+      <keyword>HB_HSETAUTOADD</keyword>
+      <keyword>HB_HSETBINARY</keyword>
+      <keyword>HB_HSETCASEMATCH</keyword>
+      <keyword>HB_HSETDEF</keyword>
+      <keyword>HB_HSETORDER</keyword>
+      <keyword>HB_HSORT</keyword>
+      <keyword>HB_HVALUEAT</keyword>
+      <keyword>HB_HVALUES</keyword>
+      <keyword>HB_I18N_ADDTEXT</keyword>
+      <keyword>HB_I18N_CHECK</keyword>
+      <keyword>HB_I18N_CODEPAGE</keyword>
+      <keyword>HB_I18N_CREATE</keyword>
+      <keyword>HB_I18N_DESCRIPTION</keyword>
+      <keyword>HB_I18N_GETTEXT</keyword>
+      <keyword>HB_I18N_HEADERSIZE</keyword>
+      <keyword>HB_I18N_LOADPOT</keyword>
+      <keyword>HB_I18N_NGETTEXT</keyword>
+      <keyword>HB_I18N_PLURALFORM</keyword>
+      <keyword>HB_I18N_RESTORETABLE</keyword>
+      <keyword>HB_I18N_SAVEPOT</keyword>
+      <keyword>HB_I18N_SAVETABLE</keyword>
+      <keyword>HB_I18N_SET</keyword>
+      <keyword>HB_IDLEADD</keyword>
+      <keyword>HB_IDLEDEL</keyword>
+      <keyword>HB_IDLERESET</keyword>
+      <keyword>HB_IDLESLEEP</keyword>
+      <keyword>HB_IDLESTATE</keyword>
+      <keyword>HB_INETACCEPT</keyword>
+      <keyword>HB_INETADDRESS</keyword>
+      <keyword>HB_INETCLEANUP</keyword>
+      <keyword>HB_INETCLEARERROR</keyword>
+      <keyword>HB_INETCLEARPERIODCALLBACK</keyword>
+      <keyword>HB_INETCLEARTIMELIMIT</keyword>
+      <keyword>HB_INETCLEARTIMEOUT</keyword>
+      <keyword>HB_INETCLOSE</keyword>
+      <keyword>HB_INETCOMPRESS</keyword>
+      <keyword>HB_INETCONNECT</keyword>
+      <keyword>HB_INETCONNECTIP</keyword>
+      <keyword>HB_INETCOUNT</keyword>
+      <keyword>HB_INETCREATE</keyword>
+      <keyword>HB_INETCRLF</keyword>
+      <keyword>HB_INETDATAREADY</keyword>
+      <keyword>HB_INETDGRAM</keyword>
+      <keyword>HB_INETDGRAMBIND</keyword>
+      <keyword>HB_INETDGRAMRECV</keyword>
+      <keyword>HB_INETDGRAMSEND</keyword>
+      <keyword>HB_INETERRORCODE</keyword>
+      <keyword>HB_INETERRORDESC</keyword>
+      <keyword>HB_INETFD</keyword>
+      <keyword>HB_INETGETALIAS</keyword>
+      <keyword>HB_INETGETHOSTS</keyword>
+      <keyword>HB_INETGETRCVBUFSIZE</keyword>
+      <keyword>HB_INETGETSNDBUFSIZE</keyword>
+      <keyword>HB_INETIFINFO</keyword>
+      <keyword>HB_INETINIT</keyword>
+      <keyword>HB_INETISSOCKET</keyword>
+      <keyword>HB_INETPERIODCALLBACK</keyword>
+      <keyword>HB_INETPORT</keyword>
+      <keyword>HB_INETRECV</keyword>
+      <keyword>HB_INETRECVALL</keyword>
+      <keyword>HB_INETRECVENDBLOCK</keyword>
+      <keyword>HB_INETRECVLINE</keyword>
+      <keyword>HB_INETSEND</keyword>
+      <keyword>HB_INETSENDALL</keyword>
+      <keyword>HB_INETSERVER</keyword>
+      <keyword>HB_INETSETRCVBUFSIZE</keyword>
+      <keyword>HB_INETSETSNDBUFSIZE</keyword>
+      <keyword>HB_INETSTATUS</keyword>
+      <keyword>HB_INETSTATUSDESC</keyword>
+      <keyword>HB_INETTIMELIMIT</keyword>
+      <keyword>HB_INETTIMEOUT</keyword>
+      <keyword>HB_ININEW</keyword>
+      <keyword>HB_INIREAD</keyword>
+      <keyword>HB_INIREADSTR</keyword>
+      <keyword>HB_INISETCOMMENT</keyword>
+      <keyword>HB_INIWRITE</keyword>
+      <keyword>HB_INIWRITESTR</keyword>
+      <keyword>HB_ISARRAY</keyword>
+      <keyword>HB_ISBLOCK</keyword>
+      <keyword>HB_ISCHAR</keyword>
+      <keyword>HB_ISDATE</keyword>
+      <keyword>HB_ISDATETIME</keyword>
+      <keyword>HB_ISEVALITEM</keyword>
+      <keyword>HB_ISFUNCTION</keyword>
+      <keyword>HB_ISHASH</keyword>
+      <keyword>HB_ISHASHKEY</keyword>
+      <keyword>HB_ISLOGICAL</keyword>
+      <keyword>HB_ISMEMO</keyword>
+      <keyword>HB_ISNIL</keyword>
+      <keyword>HB_ISNULL</keyword>
+      <keyword>HB_ISNUMERIC</keyword>
+      <keyword>HB_ISOBJECT</keyword>
+      <keyword>HB_ISPOINTER</keyword>
+      <keyword>HB_ISPRINTER</keyword>
+      <keyword>HB_ISREGEX</keyword>
+      <keyword>HB_ISSTRING</keyword>
+      <keyword>HB_ISSYMBOL</keyword>
+      <keyword>HB_ISTIMESTAMP</keyword>
+      <keyword>HB_JSONDECODE</keyword>
+      <keyword>HB_JSONENCODE</keyword>
+      <keyword>HB_KEYCHAR</keyword>
+      <keyword>HB_KEYCLEAR</keyword>
+      <keyword>HB_KEYCODE</keyword>
+      <keyword>HB_KEYEXT</keyword>
+      <keyword>HB_KEYINS</keyword>
+      <keyword>HB_KEYLAST</keyword>
+      <keyword>HB_KEYMOD</keyword>
+      <keyword>HB_KEYNEXT</keyword>
+      <keyword>HB_KEYPUT</keyword>
+      <keyword>HB_KEYSETLAST</keyword>
+      <keyword>HB_KEYSTD</keyword>
+      <keyword>HB_KEYVAL</keyword>
+      <keyword>HB_LANGERRMSG</keyword>
+      <keyword>HB_LANGMESSAGE</keyword>
+      <keyword>HB_LANGNAME</keyword>
+      <keyword>HB_LANGNEW</keyword>
+      <keyword>HB_LANGSELECT</keyword>
+      <keyword>HB_LEFTEQ</keyword>
+      <keyword>HB_LEFTEQI</keyword>
+      <keyword>HB_LIBERROR</keyword>
+      <keyword>HB_LIBEXT</keyword>
+      <keyword>HB_LIBFREE</keyword>
+      <keyword>HB_LIBGETFUNSYM</keyword>
+      <keyword>HB_LIBLOAD</keyword>
+      <keyword>HB_LIBNAME</keyword>
+      <keyword>HB_LIBPREFIX</keyword>
+      <keyword>HB_LIBSUFFIX</keyword>
+      <keyword>HB_LOGRDDACTIVE</keyword>
+      <keyword>HB_LOGRDDLOGFILENAME</keyword>
+      <keyword>HB_LOGRDDMSGLOGBLOCK</keyword>
+      <keyword>HB_LOGRDDTAG</keyword>
+      <keyword>HB_LOGRDDUSERLOGBLOCK</keyword>
+      <keyword>HB_LOGRDDVALUETOTEXT</keyword>
+      <keyword>HB_LPPCREATE</keyword>
+      <keyword>HB_LPPDESTROY</keyword>
+      <keyword>HB_LPPERROR</keyword>
+      <keyword>HB_LPPRECV</keyword>
+      <keyword>HB_LPPRECVLEN</keyword>
+      <keyword>HB_LPPSEND</keyword>
+      <keyword>HB_LPPSENDLEN</keyword>
+      <keyword>HB_LPPSETLIMIT</keyword>
+      <keyword>HB_MACROBLOCK</keyword>
+      <keyword>HB_MATHERBLOCK</keyword>
+      <keyword>HB_MATHERMODE</keyword>
+      <keyword>HB_MD5</keyword>
+      <keyword>HB_MD5DECRYPT</keyword>
+      <keyword>HB_MD5ENCRYPT</keyword>
+      <keyword>HB_MD5FILE</keyword>
+      <keyword>HB_MEMOREAD</keyword>
+      <keyword>HB_MEMOWRIT</keyword>
+      <keyword>HB_METHODNAME</keyword>
+      <keyword>HB_MGETBOUNDS</keyword>
+      <keyword>HB_MILLISECONDS</keyword>
+      <keyword>HB_MINUTE</keyword>
+      <keyword>HB_MLEVAL</keyword>
+      <keyword>HB_MMIDDLEDOWN</keyword>
+      <keyword>HB_MSECTOT</keyword>
+      <keyword>HB_MT</keyword>
+      <keyword>HB_MTVM</keyword>
+      <keyword>HB_MUTEXCREATE</keyword>
+      <keyword>HB_MUTEXEVAL</keyword>
+      <keyword>HB_MUTEXEXISTS</keyword>
+      <keyword>HB_MUTEXLOCK</keyword>
+      <keyword>HB_MUTEXNOTIFY</keyword>
+      <keyword>HB_MUTEXNOTIFYALL</keyword>
+      <keyword>HB_MUTEXQUEUEINFO</keyword>
+      <keyword>HB_MUTEXSUBSCRIBE</keyword>
+      <keyword>HB_MUTEXSUBSCRIBENOW</keyword>
+      <keyword>HB_MUTEXUNLOCK</keyword>
+      <keyword>HB_MVRESTORE</keyword>
+      <keyword>HB_MVSAVE</keyword>
+      <keyword>HB_NTOC</keyword>
+      <keyword>HB_NTOCOLOR</keyword>
+      <keyword>HB_NTOHOUR</keyword>
+      <keyword>HB_NTOMIN</keyword>
+      <keyword>HB_NTOMSEC</keyword>
+      <keyword>HB_NTOS</keyword>
+      <keyword>HB_NTOSEC</keyword>
+      <keyword>HB_NTOT</keyword>
+      <keyword>HB_NUMTOHEX</keyword>
+      <keyword>HB_OEMTOANSI</keyword>
+      <keyword>HB_OSCPU</keyword>
+      <keyword>HB_OSDRIVESEPARATOR</keyword>
+      <keyword>HB_OSERROR</keyword>
+      <keyword>HB_OSFILEMASK</keyword>
+      <keyword>HB_OSIS64BIT</keyword>
+      <keyword>HB_OSISWIN10</keyword>
+      <keyword>HB_OSISWIN11</keyword>
+      <keyword>HB_OSISWIN2K</keyword>
+      <keyword>HB_OSISWIN7</keyword>
+      <keyword>HB_OSISWIN81</keyword>
+      <keyword>HB_OSISWIN8</keyword>
+      <keyword>HB_OSISWIN9X</keyword>
+      <keyword>HB_OSISWINCE</keyword>
+      <keyword>HB_OSISWINNT</keyword>
+      <keyword>HB_OSISWINVISTA</keyword>
+      <keyword>HB_OSNEWLINE</keyword>
+      <keyword>HB_OSPATHDELIMITERS</keyword>
+      <keyword>HB_OSPATHLISTSEPARATOR</keyword>
+      <keyword>HB_OSPATHSEPARATOR</keyword>
+      <keyword>HB_PATHJOIN</keyword>
+      <keyword>HB_PATHNORMALIZE</keyword>
+      <keyword>HB_PATHRELATIVIZE</keyword>
+      <keyword>HB_PCODEVER</keyword>
+      <keyword>HB_PISBYREF</keyword>
+      <keyword>HB_PREAD</keyword>
+      <keyword>HB_PROCESSCLOSE</keyword>
+      <keyword>HB_PROCESSOPEN</keyword>
+      <keyword>HB_PROCESSRUN</keyword>
+      <keyword>HB_PROCESSVALUE</keyword>
+      <keyword>HB_PROGNAME</keyword>
+      <keyword>HB_PS</keyword>
+      <keyword>HB_PVALUE</keyword>
+      <keyword>HB_PWRITE</keyword>
+      <keyword>HB_RAND32</keyword>
+      <keyword>HB_RANDINT</keyword>
+      <keyword>HB_RANDNUM</keyword>
+      <keyword>HB_RANDOM</keyword>
+      <keyword>HB_RANDOMINT</keyword>
+      <keyword>HB_RANDOMINTMAX</keyword>
+      <keyword>HB_RANDOMSEED</keyword>
+      <keyword>HB_RANDSTR</keyword>
+      <keyword>HB_RASCAN</keyword>
+      <keyword>HB_RAT</keyword>
+      <keyword>HB_RDDGETTEMPALIAS</keyword>
+      <keyword>HB_RDDINFO</keyword>
+      <keyword>HB_REGEX</keyword>
+      <keyword>HB_REGEXALL</keyword>
+      <keyword>HB_REGEXATX</keyword>
+      <keyword>HB_REGEXCOMP</keyword>
+      <keyword>HB_REGEXHAS</keyword>
+      <keyword>HB_REGEXLIKE</keyword>
+      <keyword>HB_REGEXMATCH</keyword>
+      <keyword>HB_REGEXSPLIT</keyword>
+      <keyword>HB_RELEASECPU</keyword>
+      <keyword>HB_RUN</keyword>
+      <keyword>HB_SCRMAXCOL</keyword>
+      <keyword>HB_SCRMAXROW</keyword>
+      <keyword>HB_SCROLL</keyword>
+      <keyword>HB_SEC</keyword>
+      <keyword>HB_SECONDSCPU</keyword>
+      <keyword>HB_SECTOT</keyword>
+      <keyword>HB_SERIALIZE</keyword>
+      <keyword>HB_SETARRAYRDD</keyword>
+      <keyword>HB_SETDISPCP</keyword>
+      <keyword>HB_SETENV</keyword>
+      <keyword>HB_SETKEY</keyword>
+      <keyword>HB_SETKEYARRAY</keyword>
+      <keyword>HB_SETKEYCHECK</keyword>
+      <keyword>HB_SETKEYCP</keyword>
+      <keyword>HB_SETKEYGET</keyword>
+      <keyword>HB_SETKEYSAVE</keyword>
+      <keyword>HB_SETMACRO</keyword>
+      <keyword>HB_SETOBJECT</keyword>
+      <keyword>HB_SETTERMCP</keyword>
+      <keyword>HB_SHA1</keyword>
+      <keyword>HB_SHA224</keyword>
+      <keyword>HB_SHA256</keyword>
+      <keyword>HB_SHA384</keyword>
+      <keyword>HB_SHA512</keyword>
+      <keyword>HB_SHADOW</keyword>
+      <keyword>HB_SOCKETACCEPT</keyword>
+      <keyword>HB_SOCKETAUTOFLUSH</keyword>
+      <keyword>HB_SOCKETAUTOSHUTDOWN</keyword>
+      <keyword>HB_SOCKETBIND</keyword>
+      <keyword>HB_SOCKETCLOSE</keyword>
+      <keyword>HB_SOCKETCONNECT</keyword>
+      <keyword>HB_SOCKETERRORSTRING</keyword>
+      <keyword>HB_SOCKETFLUSH</keyword>
+      <keyword>HB_SOCKETGETALIASES</keyword>
+      <keyword>HB_SOCKETGETERROR</keyword>
+      <keyword>HB_SOCKETGETFD</keyword>
+      <keyword>HB_SOCKETGETFILTER</keyword>
+      <keyword>HB_SOCKETGETHOSTNAME</keyword>
+      <keyword>HB_SOCKETGETHOSTS</keyword>
+      <keyword>HB_SOCKETGETIFACES</keyword>
+      <keyword>HB_SOCKETGETOSERROR</keyword>
+      <keyword>HB_SOCKETGETPEERNAME</keyword>
+      <keyword>HB_SOCKETGETRCVBUFSIZE</keyword>
+      <keyword>HB_SOCKETGETSNDBUFSIZE</keyword>
+      <keyword>HB_SOCKETGETSOCKNAME</keyword>
+      <keyword>HB_SOCKETLISTEN</keyword>
+      <keyword>HB_SOCKETNEWBFSOCK</keyword>
+      <keyword>HB_SOCKETNEWZNET</keyword>
+      <keyword>HB_SOCKETNEWZSOCK</keyword>
+      <keyword>HB_SOCKETOPEN</keyword>
+      <keyword>HB_SOCKETREAD</keyword>
+      <keyword>HB_SOCKETRECV</keyword>
+      <keyword>HB_SOCKETRECVFROM</keyword>
+      <keyword>HB_SOCKETRESOLVEADDR</keyword>
+      <keyword>HB_SOCKETRESOLVEINETADDR</keyword>
+      <keyword>HB_SOCKETSELECT</keyword>
+      <keyword>HB_SOCKETSELECTREAD</keyword>
+      <keyword>HB_SOCKETSELECTWRITE</keyword>
+      <keyword>HB_SOCKETSELECTWRITEEX</keyword>
+      <keyword>HB_SOCKETSEND</keyword>
+      <keyword>HB_SOCKETSENDTO</keyword>
+      <keyword>HB_SOCKETSETBLOCKINGIO</keyword>
+      <keyword>HB_SOCKETSETBROADCAST</keyword>
+      <keyword>HB_SOCKETSETEXCLUSIVEADDR</keyword>
+      <keyword>HB_SOCKETSETFILTER</keyword>
+      <keyword>HB_SOCKETSETKEEPALIVE</keyword>
+      <keyword>HB_SOCKETSETMULTICAST</keyword>
+      <keyword>HB_SOCKETSETNODELAY</keyword>
+      <keyword>HB_SOCKETSETNOSIGPIPE</keyword>
+      <keyword>HB_SOCKETSETRCVBUFSIZE</keyword>
+      <keyword>HB_SOCKETSETREUSEADDR</keyword>
+      <keyword>HB_SOCKETSETSNDBUFSIZE</keyword>
+      <keyword>HB_SOCKETSHUTDOWN</keyword>
+      <keyword>HB_SOCKETWRITE</keyword>
+      <keyword>HB_STOD</keyword>
+      <keyword>HB_STOT</keyword>
+      <keyword>HB_STRCDECODE</keyword>
+      <keyword>HB_STRCLEAR</keyword>
+      <keyword>HB_STRDECODESCAPE</keyword>
+      <keyword>HB_STRFORMAT</keyword>
+      <keyword>HB_STRISUTF8</keyword>
+      <keyword>HB_STRREPLACE</keyword>
+      <keyword>HB_STRSHRINK</keyword>
+      <keyword>HB_STRTOEXP</keyword>
+      <keyword>HB_STRTOHEX</keyword>
+      <keyword>HB_STRTOTS</keyword>
+      <keyword>HB_STRTOUTF8</keyword>
+      <keyword>HB_STRXOR</keyword>
+      <keyword>HB_THREADDETACH</keyword>
+      <keyword>HB_THREADID</keyword>
+      <keyword>HB_THREADISMAIN</keyword>
+      <keyword>HB_THREADJOIN</keyword>
+      <keyword>HB_THREADONCE</keyword>
+      <keyword>HB_THREADONCEINIT</keyword>
+      <keyword>HB_THREADQUITREQUEST</keyword>
+      <keyword>HB_THREADSELF</keyword>
+      <keyword>HB_THREADSTART</keyword>
+      <keyword>HB_THREADTERMINATEALL</keyword>
+      <keyword>HB_THREADWAIT</keyword>
+      <keyword>HB_THREADWAITFORALL</keyword>
+      <keyword>HB_TOKENCOUNT</keyword>
+      <keyword>HB_TOKENGET</keyword>
+      <keyword>HB_TOKENPTR</keyword>
+      <keyword>HB_TRACEFILE</keyword>
+      <keyword>HB_TRACEFLUSH</keyword>
+      <keyword>HB_TRACELEVEL</keyword>
+      <keyword>HB_TRACELOG</keyword>
+      <keyword>HB_TRACELOGAT</keyword>
+      <keyword>HB_TRACELOGLEVEL</keyword>
+      <keyword>HB_TRACEMODE</keyword>
+      <keyword>HB_TRACESTATE</keyword>
+      <keyword>HB_TRACESTRING</keyword>
+      <keyword>HB_TRACESYSOUT</keyword>
+      <keyword>HB_TRANSLATE</keyword>
+      <keyword>HB_TSTOSTR</keyword>
+      <keyword>HB_TSTOUTC</keyword>
+      <keyword>HB_TTOC</keyword>
+      <keyword>HB_TTOD</keyword>
+      <keyword>HB_TTOHOUR</keyword>
+      <keyword>HB_TTOMIN</keyword>
+      <keyword>HB_TTOMSEC</keyword>
+      <keyword>HB_TTON</keyword>
+      <keyword>HB_TTOS</keyword>
+      <keyword>HB_TTOSEC</keyword>
+      <keyword>HB_UAT</keyword>
+      <keyword>HB_UCHAR</keyword>
+      <keyword>HB_UCODE</keyword>
+      <keyword>HB_ULEFT</keyword>
+      <keyword>HB_ULEN</keyword>
+      <keyword>HB_UPADC</keyword>
+      <keyword>HB_UPADL</keyword>
+      <keyword>HB_UPADR</keyword>
+      <keyword>HB_UPEEK</keyword>
+      <keyword>HB_UPOKE</keyword>
+      <keyword>HB_URIGHT</keyword>
+      <keyword>HB_USERLANG</keyword>
+      <keyword>HB_USERNAME</keyword>
+      <keyword>HB_USTUFF</keyword>
+      <keyword>HB_USUBSTR</keyword>
+      <keyword>HB_UTCOFFSET</keyword>
+      <keyword>HB_UTF8ASC</keyword>
+      <keyword>HB_UTF8AT</keyword>
+      <keyword>HB_UTF8CHR</keyword>
+      <keyword>HB_UTF8LEFT</keyword>
+      <keyword>HB_UTF8LEN</keyword>
+      <keyword>HB_UTF8PEEK</keyword>
+      <keyword>HB_UTF8POKE</keyword>
+      <keyword>HB_UTF8RAT</keyword>
+      <keyword>HB_UTF8RIGHT</keyword>
+      <keyword>HB_UTF8STUFF</keyword>
+      <keyword>HB_UTF8SUBSTR</keyword>
+      <keyword>HB_UTF8TOSTR</keyword>
+      <keyword>HB_UTF8TOSTRBOX</keyword>
+      <keyword>HB_VAL</keyword>
+      <keyword>HB_VALTOEXP</keyword>
+      <keyword>HB_VALTOSTR</keyword>
+      <keyword>HB_VERSION</keyword>
+      <keyword>HB_VFATTRGET</keyword>
+      <keyword>HB_VFATTRSET</keyword>
+      <keyword>HB_VFCLOSE</keyword>
+      <keyword>HB_VFCOMMIT</keyword>
+      <keyword>HB_VFCONFIG</keyword>
+      <keyword>HB_VFCOPYFILE</keyword>
+      <keyword>HB_VFCOPYFILEEX</keyword>
+      <keyword>HB_VFDIRBUILD</keyword>
+      <keyword>HB_VFDIRECTORY</keyword>
+      <keyword>HB_VFDIREXISTS</keyword>
+      <keyword>HB_VFDIRMAKE</keyword>
+      <keyword>HB_VFDIRREMOVE</keyword>
+      <keyword>HB_VFDIRSPACE</keyword>
+      <keyword>HB_VFDIRUNBUILD</keyword>
+      <keyword>HB_VFEOF</keyword>
+      <keyword>HB_VFERASE</keyword>
+      <keyword>HB_VFEXISTS</keyword>
+      <keyword>HB_VFFLUSH</keyword>
+      <keyword>HB_VFHANDLE</keyword>
+      <keyword>HB_VFISLOCAL</keyword>
+      <keyword>HB_VFLINK</keyword>
+      <keyword>HB_VFLINKREAD</keyword>
+      <keyword>HB_VFLINKSYM</keyword>
+      <keyword>HB_VFLOAD</keyword>
+      <keyword>HB_VFLOCK</keyword>
+      <keyword>HB_VFLOCKTEST</keyword>
+      <keyword>HB_VFMOVEFILE</keyword>
+      <keyword>HB_VFNAMEEXISTS</keyword>
+      <keyword>HB_VFOPEN</keyword>
+      <keyword>HB_VFREAD</keyword>
+      <keyword>HB_VFREADAT</keyword>
+      <keyword>HB_VFREADLEN</keyword>
+      <keyword>HB_VFRENAME</keyword>
+      <keyword>HB_VFSEEK</keyword>
+      <keyword>HB_VFSIZE</keyword>
+      <keyword>HB_VFTEMPFILE</keyword>
+      <keyword>HB_VFTIMEGET</keyword>
+      <keyword>HB_VFTIMESET</keyword>
+      <keyword>HB_VFTRUNC</keyword>
+      <keyword>HB_VFUNLOCK</keyword>
+      <keyword>HB_VFWRITE</keyword>
+      <keyword>HB_VFWRITEAT</keyword>
+      <keyword>HB_WAEVAL</keyword>
+      <keyword>HB_WEEK</keyword>
+      <keyword>HB_WILDMATCH</keyword>
+      <keyword>HB_WILDMATCHI</keyword>
+      <keyword>HB_ZCOMPRESS</keyword>
+      <keyword>HB_ZCOMPRESSBOUND</keyword>
+      <keyword>HB_ZERROR</keyword>
+      <keyword>HB_ZLIBVERSION</keyword>
+      <keyword>HB_ZUNCOMPRESS</keyword>
+      <keyword>HB_ZUNCOMPRESSLEN</keyword>
+      <keyword>HEADER</keyword>
+      <keyword>HITTEST</keyword>
+      <keyword>HSX_CLOSE</keyword>
+      <keyword>HSX_CREATE</keyword>
+      <keyword>HSX_FILE</keyword>
+      <keyword>HSX_GET</keyword>
+      <keyword>HSX_HANDLE</keyword>
+      <keyword>HSX_OPEN</keyword>
+      <keyword>HS_ADD</keyword>
+      <keyword>HS_CLOSE</keyword>
+      <keyword>HS_CREATE</keyword>
+      <keyword>HS_DELETE</keyword>
+      <keyword>HS_FILTER</keyword>
+      <keyword>HS_IFDEL</keyword>
+      <keyword>HS_INDEX</keyword>
+      <keyword>HS_KEYCOUNT</keyword>
+      <keyword>HS_NEXT</keyword>
+      <keyword>HS_OPEN</keyword>
+      <keyword>HS_REPLACE</keyword>
+      <keyword>HS_SET</keyword>
+      <keyword>HS_UNDELETE</keyword>
+      <keyword>HS_VERIFY</keyword>
+      <keyword>HS_VERSION</keyword>
+      <keyword>I2BIN</keyword>
+      <keyword>INDEXEXT</keyword>
+      <keyword>INDEXKEY</keyword>
+      <keyword>INDEXORD</keyword>
+      <keyword>INKEY</keyword>
+      <keyword>INT</keyword>
+      <keyword>IOUSR_REGISTER</keyword>
+      <keyword>IOUSR_SETERROR</keyword>
+      <keyword>ISALPHA</keyword>
+      <keyword>ISCOLOR</keyword>
+      <keyword>ISDEFCOLOR</keyword>
+      <keyword>ISDIGIT</keyword>
+      <keyword>ISDISK</keyword>
+      <keyword>ISLOWER</keyword>
+      <keyword>ISPRINTER</keyword>
+      <keyword>ISQUICK</keyword>
+      <keyword>ISSHORTCUT</keyword>
+      <keyword>ISUPPER</keyword>
+      <keyword>L2BIN</keyword>
+      <keyword>LASTKEY</keyword>
+      <keyword>LASTREC</keyword>
+      <keyword>LEFT</keyword>
+      <keyword>LEN</keyword>
+      <keyword>LENNUM</keyword>
+      <keyword>LISTBDEFCO</keyword>
+      <keyword>LISTBOX</keyword>
+      <keyword>LOCK</keyword>
+      <keyword>LOG</keyword>
+      <keyword>LOGRDD</keyword>
+      <keyword>LOGRDD_GETFUNCTABLE</keyword>
+      <keyword>LOWER</keyword>
+      <keyword>LTRIM</keyword>
+      <keyword>LUPDATE</keyword>
+      <keyword>MAX</keyword>
+      <keyword>MAXCOL</keyword>
+      <keyword>MAXROW</keyword>
+      <keyword>MCOL</keyword>
+      <keyword>MDBLCLK</keyword>
+      <keyword>MEMOEDIT</keyword>
+      <keyword>MEMOLINE</keyword>
+      <keyword>MEMOREAD</keyword>
+      <keyword>MEMORY</keyword>
+      <keyword>MEMOTRAN</keyword>
+      <keyword>MEMOWRIT</keyword>
+      <keyword>MEMVARBLOCK</keyword>
+      <keyword>MENUDEFCOL</keyword>
+      <keyword>MENUMODAL</keyword>
+      <keyword>MHIDE</keyword>
+      <keyword>MIN</keyword>
+      <keyword>MLCOUNT</keyword>
+      <keyword>MLCTOPOS</keyword>
+      <keyword>MLEFTDOWN</keyword>
+      <keyword>MLPOS</keyword>
+      <keyword>MOD</keyword>
+      <keyword>MONTH</keyword>
+      <keyword>MPOSTOLC</keyword>
+      <keyword>MPRESENT</keyword>
+      <keyword>MRESTSTATE</keyword>
+      <keyword>MRIGHTDOWN</keyword>
+      <keyword>MROW</keyword>
+      <keyword>MSAVESTATE</keyword>
+      <keyword>MSETBOUNDS</keyword>
+      <keyword>MSETCURSOR</keyword>
+      <keyword>MSETPOS</keyword>
+      <keyword>MSHOW</keyword>
+      <keyword>NETERR</keyword>
+      <keyword>NETNAME</keyword>
+      <keyword>NEXTKEY</keyword>
+      <keyword>NOSNOW</keyword>
+      <keyword>ORDBAGCLEAR</keyword>
+      <keyword>ORDBAGEXT</keyword>
+      <keyword>ORDBAGNAME</keyword>
+      <keyword>ORDCONDSET</keyword>
+      <keyword>ORDCOUNT</keyword>
+      <keyword>ORDCREATE</keyword>
+      <keyword>ORDCUSTOM</keyword>
+      <keyword>ORDDESCEND</keyword>
+      <keyword>ORDDESTROY</keyword>
+      <keyword>ORDFINDREC</keyword>
+      <keyword>ORDFOR</keyword>
+      <keyword>ORDISUNIQUE</keyword>
+      <keyword>ORDKEY</keyword>
+      <keyword>ORDKEYADD</keyword>
+      <keyword>ORDKEYCOUNT</keyword>
+      <keyword>ORDKEYDEL</keyword>
+      <keyword>ORDKEYGOTO</keyword>
+      <keyword>ORDKEYNO</keyword>
+      <keyword>ORDKEYRELPOS</keyword>
+      <keyword>ORDKEYVAL</keyword>
+      <keyword>ORDLISTADD</keyword>
+      <keyword>ORDLISTCLEAR</keyword>
+      <keyword>ORDLISTREBUILD</keyword>
+      <keyword>ORDNAME</keyword>
+      <keyword>ORDNUMBER</keyword>
+      <keyword>ORDSCOPE</keyword>
+      <keyword>ORDSETFOCUS</keyword>
+      <keyword>ORDSETRELATION</keyword>
+      <keyword>ORDSKIPRAW</keyword>
+      <keyword>ORDSKIPUNIQUE</keyword>
+      <keyword>ORDWILDSEEK</keyword>
+      <keyword>OS</keyword>
+      <keyword>OUTERR</keyword>
+      <keyword>OUTSTD</keyword>
+      <keyword>PADC</keyword>
+      <keyword>PADL</keyword>
+      <keyword>PADR</keyword>
+      <keyword>PCOL</keyword>
+      <keyword>PCOUNT</keyword>
+      <keyword>PROCFILE</keyword>
+      <keyword>PROCLINE</keyword>
+      <keyword>PROCNAME</keyword>
+      <keyword>PROW</keyword>
+      <keyword>PUSHBUTTON</keyword>
+      <keyword>QOUT</keyword>
+      <keyword>QQOUT</keyword>
+      <keyword>RADGRDEFCO</keyword>
+      <keyword>RADIOBUTTO</keyword>
+      <keyword>RADIOBUTTON</keyword>
+      <keyword>RADIOGROUP</keyword>
+      <keyword>RADITDEFCO</keyword>
+      <keyword>RANGECHECK</keyword>
+      <keyword>RAT</keyword>
+      <keyword>RDDLIST</keyword>
+      <keyword>RDDNAME</keyword>
+      <keyword>RDDREGISTER</keyword>
+      <keyword>RDDSETDEFAULT</keyword>
+      <keyword>RDD_COUNT</keyword>
+      <keyword>RDD_INFO</keyword>
+      <keyword>RDD_NAME</keyword>
+      <keyword>READEXIT</keyword>
+      <keyword>READFORMAT</keyword>
+      <keyword>READINSERT</keyword>
+      <keyword>READKEY</keyword>
+      <keyword>READKILL</keyword>
+      <keyword>READMODAL</keyword>
+      <keyword>READSTATS</keyword>
+      <keyword>READUPDATED</keyword>
+      <keyword>READVAR</keyword>
+      <keyword>RECCOUNT</keyword>
+      <keyword>RECNO</keyword>
+      <keyword>RECSIZE</keyword>
+      <keyword>REPLICATE</keyword>
+      <keyword>RESTSCREEN</keyword>
+      <keyword>RIGHT</keyword>
+      <keyword>RLOCK</keyword>
+      <keyword>ROUND</keyword>
+      <keyword>ROW</keyword>
+      <keyword>RTRIM</keyword>
+      <keyword>SAVESCREEN</keyword>
+      <keyword>SCROLL</keyword>
+      <keyword>SCROLLBAR</keyword>
+      <keyword>SDF</keyword>
+      <keyword>SECONDS</keyword>
+      <keyword>SECS</keyword>
+      <keyword>SELECT</keyword>
+      <keyword>SET</keyword>
+      <keyword>SETBLINK</keyword>
+      <keyword>SETCANCEL</keyword>
+      <keyword>SETCLRPAIR</keyword>
+      <keyword>SETCOLOR</keyword>
+      <keyword>SETCURSOR</keyword>
+      <keyword>SETKEY</keyword>
+      <keyword>SETMODE</keyword>
+      <keyword>SETPOS</keyword>
+      <keyword>SETPOSBS</keyword>
+      <keyword>SETPRC</keyword>
+      <keyword>SETTYPEAHEAD</keyword>
+      <keyword>SHOWGETMSG</keyword>
+      <keyword>SHOWMSG</keyword>
+      <keyword>SOUNDEX</keyword>
+      <keyword>SPACE</keyword>
+      <keyword>SQRT</keyword>
+      <keyword>STOD</keyword>
+      <keyword>STR</keyword>
+      <keyword>STRTRAN</keyword>
+      <keyword>STRZERO</keyword>
+      <keyword>STUFF</keyword>
+      <keyword>SUBSTR</keyword>
+      <keyword>SXCHAR</keyword>
+      <keyword>SXDATE</keyword>
+      <keyword>SXLOG</keyword>
+      <keyword>SXNUM</keyword>
+      <keyword>SX_AUTOOPEN</keyword>
+      <keyword>SX_AUTOSHARE</keyword>
+      <keyword>SX_BLOB2FILE</keyword>
+      <keyword>SX_CHILL</keyword>
+      <keyword>SX_CLRSCOPE</keyword>
+      <keyword>SX_COMPRESS</keyword>
+      <keyword>SX_DBCREATE</keyword>
+      <keyword>SX_DBFDECRYPT</keyword>
+      <keyword>SX_DBFENCRYPT</keyword>
+      <keyword>SX_DECOMPRESS</keyword>
+      <keyword>SX_DECRYPT</keyword>
+      <keyword>SX_DEFTRIGGER</keyword>
+      <keyword>SX_DESCEND</keyword>
+      <keyword>SX_DTOP</keyword>
+      <keyword>SX_ENCRYPT</keyword>
+      <keyword>SX_ERROR</keyword>
+      <keyword>SX_FCOMPRESS</keyword>
+      <keyword>SX_FDECOMPRESS</keyword>
+      <keyword>SX_FILE2BLOB</keyword>
+      <keyword>SX_FILEORDER</keyword>
+      <keyword>SX_FNAMEPARSER</keyword>
+      <keyword>SX_FREEZE</keyword>
+      <keyword>SX_GETLOCKS</keyword>
+      <keyword>SX_IDTYPE</keyword>
+      <keyword>SX_INDEXCOUNT</keyword>
+      <keyword>SX_INDEXNAME</keyword>
+      <keyword>SX_INDEXTYPE</keyword>
+      <keyword>SX_INIHEADER</keyword>
+      <keyword>SX_ISDBT</keyword>
+      <keyword>SX_ISFLOCKED</keyword>
+      <keyword>SX_ISLOCKED</keyword>
+      <keyword>SX_ISMYROX</keyword>
+      <keyword>SX_ISREADONLY</keyword>
+      <keyword>SX_ISREINDEX</keyword>
+      <keyword>SX_ISROXLOCK</keyword>
+      <keyword>SX_ISSEM</keyword>
+      <keyword>SX_ISSHARED</keyword>
+      <keyword>SX_I_INDEXNAME</keyword>
+      <keyword>SX_I_TAGNAME</keyword>
+      <keyword>SX_KEYADD</keyword>
+      <keyword>SX_KEYCOUNT</keyword>
+      <keyword>SX_KEYDATA</keyword>
+      <keyword>SX_KEYDROP</keyword>
+      <keyword>SX_KEYGOTO</keyword>
+      <keyword>SX_KEYNO</keyword>
+      <keyword>SX_KEYSINCLUDED</keyword>
+      <keyword>SX_KEYSKIP</keyword>
+      <keyword>SX_KILLSEM</keyword>
+      <keyword>SX_KILLTAG</keyword>
+      <keyword>SX_LOCKRETRY</keyword>
+      <keyword>SX_MAKESEM</keyword>
+      <keyword>SX_MEMOBLK</keyword>
+      <keyword>SX_MEMOEXT</keyword>
+      <keyword>SX_MEMOPACK</keyword>
+      <keyword>SX_PTOD</keyword>
+      <keyword>SX_RLOCK</keyword>
+      <keyword>SX_ROLLBACK</keyword>
+      <keyword>SX_ROXLOCK</keyword>
+      <keyword>SX_ROXUNLOCK</keyword>
+      <keyword>SX_SEEKLAST</keyword>
+      <keyword>SX_SETFILEORD</keyword>
+      <keyword>SX_SETMEMOBLOCK</keyword>
+      <keyword>SX_SETPASS</keyword>
+      <keyword>SX_SETSCOPE</keyword>
+      <keyword>SX_SETTAG</keyword>
+      <keyword>SX_SETTRIGGER</keyword>
+      <keyword>SX_SETTURBO</keyword>
+      <keyword>SX_SKIPUNIQUE</keyword>
+      <keyword>SX_SLIMFAST</keyword>
+      <keyword>SX_SORTOPTION</keyword>
+      <keyword>SX_STEP</keyword>
+      <keyword>SX_STRXCHECK</keyword>
+      <keyword>SX_TABLENAME</keyword>
+      <keyword>SX_TABLETYPE</keyword>
+      <keyword>SX_TAGCOUNT</keyword>
+      <keyword>SX_TAGINFO</keyword>
+      <keyword>SX_TAGNO</keyword>
+      <keyword>SX_TAGORDER</keyword>
+      <keyword>SX_TAGS</keyword>
+      <keyword>SX_TAGUNIQUE</keyword>
+      <keyword>SX_THERMOMETER</keyword>
+      <keyword>SX_TURBOAREA</keyword>
+      <keyword>SX_UNLOCK</keyword>
+      <keyword>SX_VERSION</keyword>
+      <keyword>SX_VFGET</keyword>
+      <keyword>SX_VSIGLEN</keyword>
+      <keyword>SX_WARM</keyword>
+      <keyword>SX_WILDMATCH</keyword>
+      <keyword>SX_WILDSEEK</keyword>
+      <keyword>SYSINIT</keyword>
+      <keyword>TAPPLYKEY</keyword>
+      <keyword>TBADDCOL</keyword>
+      <keyword>TBAPPLYKEY</keyword>
+      <keyword>TBBBLOCK</keyword>
+      <keyword>TBCLOSE</keyword>
+      <keyword>TBCOLUMNNEW</keyword>
+      <keyword>TBCREATE</keyword>
+      <keyword>TBDELCOL</keyword>
+      <keyword>TBDELCOL</keyword>
+      <keyword>TBDISPLAY</keyword>
+      <keyword>TBEDITCELL</keyword>
+      <keyword>TBFBLOCK</keyword>
+      <keyword>TBGOBOT</keyword>
+      <keyword>TBGOTOP</keyword>
+      <keyword>TBINSCOL</keyword>
+      <keyword>TBMODAL</keyword>
+      <keyword>TBMOUSE</keyword>
+      <keyword>TBREADER</keyword>
+      <keyword>TBROWSEDB</keyword>
+      <keyword>TBROWSENEW</keyword>
+      <keyword>TBSBLOCK</keyword>
+      <keyword>TBSBLOCK</keyword>
+      <keyword>TBSKIP</keyword>
+      <keyword>TIME</keyword>
+      <keyword>TONE</keyword>
+      <keyword>TRANSFORM</keyword>
+      <keyword>TSTRING</keyword>
+      <keyword>TYPE</keyword>
+      <keyword>UPDATED</keyword>
+      <keyword>UPPER</keyword>
+      <keyword>USED</keyword>
+      <keyword>USRRDD_AREADATA</keyword>
+      <keyword>USRRDD_AREARESULT</keyword>
+      <keyword>USRRDD_GETFUNCTABLE</keyword>
+      <keyword>USRRDD_ID</keyword>
+      <keyword>USRRDD_RDDDATA</keyword>
+      <keyword>USRRDD_SETBOF</keyword>
+      <keyword>USRRDD_SETBOTTOM</keyword>
+      <keyword>USRRDD_SETEOF</keyword>
+      <keyword>USRRDD_SETFOUND</keyword>
+      <keyword>USRRDD_SETTOP</keyword>
+      <keyword>VAL</keyword>
+      <keyword>VALTYPE</keyword>
+      <keyword>VERSION</keyword>
+      <keyword>WORD</keyword>
+      <keyword>YEAR</keyword>
+      <keyword>__ACCEPT</keyword>
+      <keyword>__ACCEPTSTR</keyword>
+      <keyword>__ATCLEAR</keyword>
+      <keyword>__ATPROMPT</keyword>
+      <keyword>__BOX</keyword>
+      <keyword>__BOXD</keyword>
+      <keyword>__BOXS</keyword>
+      <keyword>__BREAKBLOCK</keyword>
+      <keyword>__CAPLENGTH</keyword>
+      <keyword>__CAPMETRICS</keyword>
+      <keyword>__CAPTION</keyword>
+      <keyword>__CLASSH</keyword>
+      <keyword>__CLASSNAME</keyword>
+      <keyword>__CLASSSEL</keyword>
+      <keyword>__CLEAR</keyword>
+      <keyword>__CLSADDFRIEND</keyword>
+      <keyword>__CLSADDMSG</keyword>
+      <keyword>__CLSASSOCTYPE</keyword>
+      <keyword>__CLSCNTCLASSES</keyword>
+      <keyword>__CLSDELMSG</keyword>
+      <keyword>__CLSGETANCESTORS</keyword>
+      <keyword>__CLSGETPROPERTIES</keyword>
+      <keyword>__CLSINST</keyword>
+      <keyword>__CLSINSTSUPER</keyword>
+      <keyword>__CLSLOCK</keyword>
+      <keyword>__CLSLOCKDEF</keyword>
+      <keyword>__CLSMODMSG</keyword>
+      <keyword>__CLSMSGTYPE</keyword>
+      <keyword>__CLSNEW</keyword>
+      <keyword>__CLSPARENT</keyword>
+      <keyword>__CLSPREALLOCATE</keyword>
+      <keyword>__CLSSYNCSIGNAL</keyword>
+      <keyword>__CLSSYNCWAIT</keyword>
+      <keyword>__CLSUNLOCKDEF</keyword>
+      <keyword>__CLSVERIFY</keyword>
+      <keyword>__CLS_CNTCLSDATA</keyword>
+      <keyword>__CLS_CNTDATA</keyword>
+      <keyword>__CLS_CNTSHRDATA</keyword>
+      <keyword>__CLS_DECDATA</keyword>
+      <keyword>__CLS_INCDATA</keyword>
+      <keyword>__COPYFILE</keyword>
+      <keyword>__DBAPP</keyword>
+      <keyword>__DBARRANGE</keyword>
+      <keyword>__DBCONTINUE</keyword>
+      <keyword>__DBCOPY</keyword>
+      <keyword>__DBCOPYSTRUCT</keyword>
+      <keyword>__DBCOPYXSTRUCT</keyword>
+      <keyword>__DBCREATE</keyword>
+      <keyword>__DBDELIM</keyword>
+      <keyword>__DBJOIN</keyword>
+      <keyword>__DBLIST</keyword>
+      <keyword>__DBLOCATE</keyword>
+      <keyword>__DBOPENSDF</keyword>
+      <keyword>__DBPACK</keyword>
+      <keyword>__DBSDF</keyword>
+      <keyword>__DBSETFOUND</keyword>
+      <keyword>__DBSETLOCATE</keyword>
+      <keyword>__DBSKIPPER</keyword>
+      <keyword>__DBSORT</keyword>
+      <keyword>__DBSQL</keyword>
+      <keyword>__DBSTRUCTFILTER</keyword>
+      <keyword>__DBTOTAL</keyword>
+      <keyword>__DBTRANS</keyword>
+      <keyword>__DBTRANSREC</keyword>
+      <keyword>__DBUPDATE</keyword>
+      <keyword>__DBZAP</keyword>
+      <keyword>__DEFAULTNIL</keyword>
+      <keyword>__DEFPATH</keyword>
+      <keyword>__DIR</keyword>
+      <keyword>__DYNSCOUNT</keyword>
+      <keyword>__DYNSGETINDEX</keyword>
+      <keyword>__DYNSGETNAME</keyword>
+      <keyword>__DYNSGETPRF</keyword>
+      <keyword>__DYNSISFUN</keyword>
+      <keyword>__DYNSN2PTR</keyword>
+      <keyword>__DYNSN2SYM</keyword>
+      <keyword>__DYNSP2NAME</keyword>
+      <keyword>__DYNSVERIFY</keyword>
+      <keyword>__EINSTVAR52</keyword>
+      <keyword>__EINSTVAR53</keyword>
+      <keyword>__EJECT</keyword>
+      <keyword>__ERRINHANDLER</keyword>
+      <keyword>__ERRRT_BASE</keyword>
+      <keyword>__ERRRT_SBASE</keyword>
+      <keyword>__FLEDIT</keyword>
+      <keyword>__FM_ALLOCLIMIT</keyword>
+      <keyword>__GET</keyword>
+      <keyword>__GETA</keyword>
+      <keyword>__GETLISTACTIVE</keyword>
+      <keyword>__GETLISTLAST</keyword>
+      <keyword>__GETLISTSETACTIVE</keyword>
+      <keyword>__GETMESSAGE</keyword>
+      <keyword>__GETMSGPRF</keyword>
+      <keyword>__GUICOLOR</keyword>
+      <keyword>__HBVMINIT</keyword>
+      <keyword>__HB_LANGSELECT</keyword>
+      <keyword>__INPUT</keyword>
+      <keyword>__ITEMSETOBJ</keyword>
+      <keyword>__ITEMSETOBJRAW</keyword>
+      <keyword>__ITEMSETREF</keyword>
+      <keyword>__KEYBOARD</keyword>
+      <keyword>__KILLREAD</keyword>
+      <keyword>__LABELFORM</keyword>
+      <keyword>__MENUTO</keyword>
+      <keyword>__MICOLUMN</keyword>
+      <keyword>__MIROW</keyword>
+      <keyword>__MVCLEAR</keyword>
+      <keyword>__MVDBGINFO</keyword>
+      <keyword>__MVEXIST</keyword>
+      <keyword>__MVGET</keyword>
+      <keyword>__MVGETDEF</keyword>
+      <keyword>__MVPRIVATE</keyword>
+      <keyword>__MVPUBLIC</keyword>
+      <keyword>__MVPUT</keyword>
+      <keyword>__MVRELEASE</keyword>
+      <keyword>__MVRESTORE</keyword>
+      <keyword>__MVSAVE</keyword>
+      <keyword>__MVSCOPE</keyword>
+      <keyword>__MVSETBASE</keyword>
+      <keyword>__MVXRELEASE</keyword>
+      <keyword>__NATISAFFIRM</keyword>
+      <keyword>__NATISNEGATIVE</keyword>
+      <keyword>__NATMSG</keyword>
+      <keyword>__NATMSGVER</keyword>
+      <keyword>__NONOALERT</keyword>
+      <keyword>__OBJADDDATA</keyword>
+      <keyword>__OBJADDINLINE</keyword>
+      <keyword>__OBJADDMETHOD</keyword>
+      <keyword>__OBJCLONE</keyword>
+      <keyword>__OBJDELDATA</keyword>
+      <keyword>__OBJDELINLINE</keyword>
+      <keyword>__OBJDELMETHOD</keyword>
+      <keyword>__OBJDERIVEDFROM</keyword>
+      <keyword>__OBJGETCLSNAME</keyword>
+      <keyword>__OBJGETIVARS</keyword>
+      <keyword>__OBJGETMETHODLIST</keyword>
+      <keyword>__OBJGETMSGLIST</keyword>
+      <keyword>__OBJGETPROPERTIES</keyword>
+      <keyword>__OBJGETVALUELIST</keyword>
+      <keyword>__OBJHASDATA</keyword>
+      <keyword>__OBJHASMETHOD</keyword>
+      <keyword>__OBJHASMSG</keyword>
+      <keyword>__OBJHASMSGASSIGNED</keyword>
+      <keyword>__OBJMODINLINE</keyword>
+      <keyword>__OBJMODMETHOD</keyword>
+      <keyword>__OBJRESTOREIVARS</keyword>
+      <keyword>__OBJSENDMSG</keyword>
+      <keyword>__OBJSETCLASS</keyword>
+      <keyword>__OBJSETCLASSHANDLE</keyword>
+      <keyword>__OBJSETIVARS</keyword>
+      <keyword>__OBJSETVALUELIST</keyword>
+      <keyword>__OPCOUNT</keyword>
+      <keyword>__OPGETPRF</keyword>
+      <keyword>__PP_ADDRULE</keyword>
+      <keyword>__PP_INIT</keyword>
+      <keyword>__PP_PATH</keyword>
+      <keyword>__PP_PROCESS</keyword>
+      <keyword>__PP_RESET</keyword>
+      <keyword>__PP_STDRULES</keyword>
+      <keyword>__QQPUB</keyword>
+      <keyword>__QUIT</keyword>
+      <keyword>__QUITCANCEL</keyword>
+      <keyword>__RDDPREALLOCATE</keyword>
+      <keyword>__RECOVERERRORBLOCK</keyword>
+      <keyword>__REPORTFORM</keyword>
+      <keyword>__RUN</keyword>
+      <keyword>__SENDER</keyword>
+      <keyword>__SETCENTURY</keyword>
+      <keyword>__SETFORMAT</keyword>
+      <keyword>__SETFUNCTION</keyword>
+      <keyword>__SETHELPK</keyword>
+      <keyword>__SETPROFILER</keyword>
+      <keyword>__TEXTRESTORE</keyword>
+      <keyword>__TEXTSAVE</keyword>
+      <keyword>__TRACEPRGCALLS</keyword>
+      <keyword>__TYPEFILE</keyword>
+      <keyword>__VMCOUNTTHREADS</keyword>
+      <keyword>__VMITEMID</keyword>
+      <keyword>__VMITEMREFS</keyword>
+      <keyword>__VMKEYPOOL</keyword>
+      <keyword>__VMMODULESVERIFY</keyword>
+      <keyword>__VMNOINTERNALS</keyword>
+      <keyword>__WAIT</keyword>
+      <keyword>__WAPI_GETACP</keyword>
+      <keyword>__WAPI_GETCONSOLEOUTPUTCP</keyword>
+      <keyword>__WAPI_GETOEMCP</keyword>
+      <keyword>__XHELP</keyword>
+      <keyword>__XRESTSCREEN</keyword>
+      <keyword>__XSAVEGETATTR</keyword>
+      <keyword>__XSAVEGETCHAR</keyword>
+      <keyword>__XSAVEGETCOLOR</keyword>
+      <keyword>__XSAVESCREEN</keyword>
+    </context>
+
+    <context id="builtin-preprocessor" style-ref="builtin-preprocessor">
+      <prefix>\%{statement-start}</prefix>
+      <suffix>\b</suffix>
+      <keyword>\!|\?|\?\?|@|ACCEPT|CANCEL|CLS|COPY\s+FILE|DELETE\s+FILE|DIR|EJECT|ERASE|INPUT|KEYBOARD|MENU\sTO|QUIT|RENAME|REQUEST|TEXTBLOCK|TYPE|WAIT</keyword>
+      <keyword>READ(?:\s+SAVE)?(?:\s+MENU)?</keyword>
+      <keyword>CLEAR(?:\s+(ALL|MEMORY|SCREEN|TYPEAHEAD))?</keyword>
+      <keyword>SAVE\s+SCREEN(?:\s+TO)?</keyword>
+      <keyword>RESTORE\s+SCREEN(?:\s+FROM)?</keyword>
+      <keyword>RELEASE(?:\s+ALL(\s+(LIKE|EXCEPT)?))?</keyword>
+      <keyword>RESTORE(?:\s+HBV)?(?:\s+FROM)?</keyword>
+      <keyword>(FIND|RUN)(?!\s*:?=)</keyword>
+      <keyword>SAVE(?:\s+HBV)?(?:\s+(TO|ALL(\s+(LIKE|EXCEPT)?))?)</keyword>
+      <keyword>TEXT(?:\s+TO\s+(FILE|PRINTER))?</keyword>
+      <keyword>CLOSE(?:\s+(ALL|ALTERNATE|FORMAT))?</keyword>
+      <keyword>SET\s+DATE(?:\s+TO)\s+(?:AMERICAN|ANSI|BRITISH|FRENCH|GERMAN|ITALIAN|JAPANESE|USA)</keyword>
+      <keyword>SET\s+(ALTERNATE|PRINTER)(?:\s+(ON|OFF|TO))</keyword>
+      <keyword>SET\s+DELIMITERS(?:\s+(ON|OFF|TO(\s+DEFAULT)?))</keyword>
+      <keyword>SET\s+(BELL|CENTURY|CONFIRM|CONSOLE|CURSOR|ESCAPE|EXACT|FIXED|INTENSITY|SCOREBOARD|WRAP)(?:\s+(?:ON|OFF)?)</keyword>
+      <keyword>SET\s+(COLOU?R|DEFAULT|DECIMALS|EPOCH|EVENTMASK|FORMAT|MARGIN|MESSAGE|PATH|PROCEDURE|TYPEAHEAD|VIDEOMODE)\s+TO</keyword>
+      <keyword>SET\s+(DATE|TIME)\s+FORMAT(?:\s+TO)?</keyword>
+      <keyword>SET\s+DEVICE\s+TO\s+(?:PRINTER|SCREEN)</keyword>
+      <keyword>SET\s+(FUNCTION|KEY)</keyword>
+      <keyword>SET\s+(DIRCASE|DIRSEPARATOR|EOL|FILECASE)</keyword>
+      <keyword>ASSOCIATE\s+CLASS|ENABLE\sCLASS\sTYPE(?:\s+ALL)?</keyword>
+    </context>
+
+    <define-regex id="datetime1">\{\^((?:\d{4}[-]\d{2}[-]\d{2},?)?\s*(?:\d\d(?::\d\d(?::\d\d(?:\.\d{1,3})?)?)?(?:\s*[a|p]m)))\}</define-regex>
+    <define-regex id="datetime2">\{\^((?:\d{4}[/]\d{2}[/]\d{2},?)?\s*(?:\d\d(?::\d\d(?::\d\d(?:\.\d{1,3})?)?)?(?:\s*[a|p]m)))\}</define-regex>
+    <define-regex id="datetime3">\{\^((?:\d{4}[.]\d{2}[.]\d{2},?)?\s*(?:\d\d(?::\d\d(?::\d\d(?:\.\d{1,3})?)?)?(?:\s*[a|p]m)))\}</define-regex>
+    <context id="datetime" style-ref="datetime">
+      <match>\%{datetime1}|\%{datetime2}|\%{datetime3}</match>
+    </context>
+
+    <context id="date" style-ref="datetime">
+      <match>0d\d{8}</match>
+    </context>
+
+    <context id="common" class="no-spell-check">
+      <include>
+        <context ref="xbase-line-comment"/>
+        <context ref="def:c-like-comment" style-ref="comment"/>
+        <context ref="def:c-like-comment-multiline" style-ref="comment"/>
+        <context ref="def:c-like-close-comment-outside-comment" style-ref="comment"/>
+        <context ref="line-continue"/>
+        <context ref="if0-comment"/>
+        <context ref="include"/>
+        <context ref="preprocessor"/>
+        <context ref="string"/>
+        <context ref="string2"/>
+        <context ref="string3"/>
+        <context ref="extstring"/>
+        <context ref="extstring2"/>
+        <context ref="datetime"/>
+        <context ref="date"/>
+        <context ref="float"/>
+        <context ref="hexadecimal"/>
+        <context ref="invalid-hexadecimal"/>
+        <context ref="decimal"/>
+        <context ref="case"/>
+        <context ref="if"/>
+        <context ref="loop1"/>
+        <context ref="loop2"/>
+        <context ref="sequence"/>
+        <context ref="switch"/>
+        <context ref="with"/>
+        <context ref="class-declaration"/>
+        <context ref="keywords"/>
+        <context ref="macro-evaluation"/>
+        <context ref="operators"/>
+        <context ref="function-declaration"/>
+        <context ref="database-command"/>
+        <context ref="storage-class"/>
+        <context ref="builtin-class"/>
+        <context ref="builtin-function"/>
+        <context ref="boolean"/>
+        <context ref="database-command"/>
+        <context ref="builtin-preprocessor"/>
+      </include>
+    </context>
+
+    <context id="nontoplevel" class="no-spell-check">
+      <include>
+        <context ref="common"/>
+        <context ref="exit" style-ref="keyword"/>
+        <context ref="loop" style-ref="keyword"/>
+      </include>
+    </context>
+
+    <context id="harbour" class="no-spell-check">
+      <include>
+        <context ref="common"/>
+        <context ref="always" style-ref="error"/>
+        <context ref="recover" style-ref="error"/>
+        <context ref="exit" style-ref="error"/>
+        <context ref="loop" style-ref="error"/>
+        <context ref="otherwise" style-ref="error"/>
+      </include>
+    </context>
+
+  </definitions>
+</language>
